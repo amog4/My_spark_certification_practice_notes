@@ -1,0 +1,5430 @@
+commit 9dc11ca7e5df70c4b4e811b2bbc60dba640be03e
+Author: amog4 <saiamoghc@gmail.com>
+Date:   Fri Sep 11 19:50:13 2020 +0530
+
+    add spark notes
+
+diff --git a/01-spark-etl-databricks/01_Spark_Architecture_Components.ipynb b/01-spark-etl-databricks/01_Spark_Architecture_Components.ipynb
+new file mode 100644
+index 0000000..08e520e
+--- /dev/null
++++ b/01-spark-etl-databricks/01_Spark_Architecture_Components.ipynb
+@@ -0,0 +1,391 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599131258304",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# import neecessary libraries\n",
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.functions import max,desc\n",
++    "#from pyspark.sql.session import SparkSession "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('architecture').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "rangedf = spark.range(1000).toDF('number')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "divrange = rangedf.where(\"number % 2 = 0\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "500"
++     },
++     "metadata": {},
++     "execution_count": 15
++    }
++   ],
++   "source": [
++    "divrange.count()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "[Row(sum(id)=494450)]\n"
++    }
++   ],
++   "source": [
++    "# one liner \n",
++    "print(spark.range(1000).where('id > 100').selectExpr(\"sum(id)\").collect())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 19,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# End to End example using Flight data\n"
++   ]
++  },
++  {
++   "cell_type": "markdown",
++   "metadata": {},
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "FlightData2015 = spark.\\\n",
++    "                    read.option(\"inferSchema\",'true').option(\"header\",'true').\\\n",
++    "                    csv('/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-master/data//flight-data/csv/2015-summary.csv')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(DEST_COUNTRY_NAME='United States', ORIGIN_COUNTRY_NAME='Romania', count=15),\n Row(DEST_COUNTRY_NAME='United States', ORIGIN_COUNTRY_NAME='Croatia', count=1),\n Row(DEST_COUNTRY_NAME='United States', ORIGIN_COUNTRY_NAME='Ireland', count=344)]"
++     },
++     "metadata": {},
++     "execution_count": 23
++    }
++   ],
++   "source": [
++    "FlightData2015.take(3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "== Physical Plan ==\n*(2) Sort [count#48 ASC NULLS FIRST], true, 0\n+- Exchange rangepartitioning(count#48 ASC NULLS FIRST, 200)\n   +- *(1) FileScan csv [DEST_COUNTRY_NAME#46,ORIGIN_COUNTRY_NAME#47,count#48] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-maste..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<DEST_COUNTRY_NAME:string,ORIGIN_COUNTRY_NAME:string,count:int>\n"
++    }
++   ],
++   "source": [
++    "# lineage \n",
++    "FlightData2015.sort('count').explain()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# spark creates 200 partition by default in the above lineage we can see that, but we dont need that many partitions, lets change the partition \n",
++    "\n",
++    "spark.conf.set('spark.sql.shuffle.partitions',\"5\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "== Physical Plan ==\n*(2) Sort [count#48 ASC NULLS FIRST], true, 0\n+- Exchange rangepartitioning(count#48 ASC NULLS FIRST, 5)\n   +- *(1) FileScan csv [DEST_COUNTRY_NAME#46,ORIGIN_COUNTRY_NAME#47,count#48] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-maste..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<DEST_COUNTRY_NAME:string,ORIGIN_COUNTRY_NAME:string,count:int>\n"
++    }
++   ],
++   "source": [
++    "FlightData2015.sort('count').explain()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# spark sql"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 30,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "FlightData2015.createOrReplaceTempView('flight_data_2015')\n",
++    "\n",
++    "sqlway = spark.sql(\"\"\"\n",
++    "select DEST_COUNTRY_NAME, count(1) from flight_data_2015 group by DEST_COUNTRY_NAME\n",
++    "\n",
++    "\"\"\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 32,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------------+--------+\n|   DEST_COUNTRY_NAME|count(1)|\n+--------------------+--------+\n|             Moldova|       1|\n|             Bolivia|       1|\n|             Algeria|       1|\n|Turks and Caicos ...|       1|\n|            Pakistan|       1|\n+--------------------+--------+\nonly showing top 5 rows\n\n"
++    }
++   ],
++   "source": [
++    "sqlway.show(5)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "== Physical Plan ==\n*(2) HashAggregate(keys=[DEST_COUNTRY_NAME#46], functions=[count(1)])\n+- Exchange hashpartitioning(DEST_COUNTRY_NAME#46, 5)\n   +- *(1) HashAggregate(keys=[DEST_COUNTRY_NAME#46], functions=[partial_count(1)])\n      +- *(1) FileScan csv [DEST_COUNTRY_NAME#46] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-maste..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<DEST_COUNTRY_NAME:string>\n"
++    }
++   ],
++   "source": [
++    "sqlway.explain()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "dataframeway = FlightData2015.groupBy(\"DEST_COUNTRY_NAME\").count()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "== Physical Plan ==\n*(2) HashAggregate(keys=[DEST_COUNTRY_NAME#46], functions=[count(1)])\n+- Exchange hashpartitioning(DEST_COUNTRY_NAME#46, 5)\n   +- *(1) HashAggregate(keys=[DEST_COUNTRY_NAME#46], functions=[partial_count(1)])\n      +- *(1) FileScan csv [DEST_COUNTRY_NAME#46] Batched: false, Format: CSV, Location: InMemoryFileIndex[file:/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-maste..., PartitionFilters: [], PushedFilters: [], ReadSchema: struct<DEST_COUNTRY_NAME:string>\n"
++    }
++   ],
++   "source": [
++    "dataframeway.explain()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 37,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# both sql and dataframe are same logical plan "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 38,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# we can get some intersting stats "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 40,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[DEST_COUNTRY_NAME: string, destination_total: bigint]"
++     },
++     "metadata": {},
++     "execution_count": 40
++    }
++   ],
++   "source": [
++    "spark.sql(\"\"\"\n",
++    "\n",
++    "SELECT DEST_COUNTRY_NAME, sum(count) as destination_total\n",
++    "FROM flight_data_2015\n",
++    "GROUP BY DEST_COUNTRY_NAME\n",
++    "ORDER BY sum(count) DESC\n",
++    "LIMIT 5\n",
++    "\n",
++    "\"\"\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 42,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(max(count)=370002)]"
++     },
++     "metadata": {},
++     "execution_count": 42
++    }
++   ],
++   "source": [
++    "FlightData2015.select(max('count')).take(1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 48,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-----------------+-----------------+\n|DEST_COUNTRY_NAME|destination_total|\n+-----------------+-----------------+\n|    United States|           411352|\n|           Canada|             8399|\n|           Mexico|             7140|\n|   United Kingdom|             2025|\n|            Japan|             1548|\n+-----------------+-----------------+\n\n"
++    }
++   ],
++   "source": [
++    "FlightData2015.groupBy(\"DEST_COUNTRY_NAME\").\\\n",
++    "    sum(\"count\").\\\n",
++    "    withColumnRenamed(\"sum(count)\",\"destination_total\").\\\n",
++    "        sort(desc(\"destination_total\")).\\\n",
++    "        limit(5).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "'172.17.0.1'"
++     },
++     "metadata": {},
++     "execution_count": 4
++    }
++   ],
++   "source": [
++    "spark.conf.get('spark.driver.host')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "'36889'"
++     },
++     "metadata": {},
++     "execution_count": 5
++    }
++   ],
++   "source": [
++    "spark.conf.get('spark.driver.port')"
++   ]
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/01_etl.ipynb b/01-spark-etl-databricks/01_etl.ipynb
+new file mode 100644
+index 0000000..02855e1
+--- /dev/null
++++ b/01-spark-etl-databricks/01_etl.ipynb
+@@ -0,0 +1,365 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599464000613",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "import os \n",
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.functions import col,from_utc_timestamp,hour,count,isnull"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "path = '/home/amogh/Documents/vs_code_python/spark_itversity/spark_certification_notes/01-spark-etl-databricks/us_sec_gov_log_data/log20170630.csv'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('spark_etl_databricks').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# using the sample \n",
++    "logDF = spark.\\\n",
++    "        read.\\\n",
++    "        option('header','true').\\\n",
++    "        csv(path).sample(withReplacement = False, fraction=0.3,seed=3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "display_data",
++     "data": {
++      "text/plain": "DataFrame[ip: string, date: string, time: string, zone: string, cik: string, accession: string, extention: string, code: string, size: string, idx: string, norefer: string, noagent: string, find: string, crawler: string, browser: string]"
++     },
++     "metadata": {}
++    }
++   ],
++   "source": [
++    "display(logDF)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 33,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(ip='101.81.133.jja', date='2017-06-30', time='00:00:00', zone='0.0', cik='1608552.0', accession='0001047469-17-004337', extention='-index.htm', code='200.0', size='80251.0', idx='1.0', norefer='0.0', noagent='0.0', find='9.0', crawler='0.0', browser=None),\n Row(ip='107.23.85.jfd', date='2017-06-30', time='00:00:00', zone='0.0', cik='1136894.0', accession='0000905148-07-003827', extention='-index.htm', code='200.0', size='3021.0', idx='1.0', norefer='0.0', noagent='0.0', find='10.0', crawler='0.0', browser=None),\n Row(ip='107.23.85.jfd', date='2017-06-30', time='00:00:00', zone='0.0', cik='841535.0', accession='0000841535-10-000003', extention='-index.htm', code='200.0', size='2716.0', idx='1.0', norefer='0.0', noagent='0.0', find='10.0', crawler='0.0', browser=None)]"
++     },
++     "metadata": {},
++     "execution_count": 33
++    }
++   ],
++   "source": [
++    "logDF.take(3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-----+\n| code|\n+-----+\n|200.0|\n|503.0|\n|404.0|\n| null|\n|  0.0|\n|400.0|\n|206.0|\n|429.0|\n|500.0|\n|403.0|\n|502.0|\n|301.0|\n|504.0|\n|304.0|\n+-----+\n\n"
++    }
++   ],
++   "source": [
++    "logDF.select('code').distinct().show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Lets look at server side error code between - 500 & 600"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 43,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "servererror_code_df = logDF.\\\n",
++    "    filter((col(\"code\") >= 500) & (col(\"code\") < 600))\\\n",
++    "        .select(\"date\",\"time\",\"extention\",\"code\") "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 44,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "display_data",
++     "data": {
++      "text/plain": "DataFrame[date: string, time: string, extention: string, code: string]"
++     },
++     "metadata": {}
++    }
++   ],
++   "source": [
++    "display(servererror_code_df)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 45,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(date='2017-06-30', time='00:00:11', extention='-index.htm', code='503.0')]"
++     },
++     "metadata": {},
++     "execution_count": 45
++    }
++   ],
++   "source": [
++    "servererror_code_df.take(1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 52,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Data validation\n",
++    "# one aspect of ETL job is to validate that the data is what you expect. That includes \n",
++    "#   * The number of records\n",
++    "#   * The expected fields present\n",
++    "#   * No unexpected missing values "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Look at serverside error by hour "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 62,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "servererror_perhour_df = servererror_code_df.select(hour(from_utc_timestamp('time','GMT')).alias('hour') ).\\\n",
++    "                         groupBy(\"hour\").\\\n",
++    "                         count().orderBy(\"hour\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 63,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "display_data",
++     "data": {
++      "text/plain": "DataFrame[hour: int, count: bigint]"
++     },
++     "metadata": {}
++    }
++   ],
++   "source": [
++    "display(servererror_perhour_df)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 69,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "servererror_code_df.repartition(1).\\\n",
++    "    write.\\\n",
++    "    mode(\"overwrite\").\\\n",
++    "        parquet(\"/home/amogh/Documents/vs_code_python/spark_itversity/spark_certification_notes/01-spark-etl-databricks/us_sec_gov_log_data/serverside_error_log20170630.parquet\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 72,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "#saving the file in parquet format (columnar formar )"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 65,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----+-----+\n|hour|count|\n+----+-----+\n|   0| 1956|\n|   1| 1920|\n|   2| 1813|\n|   3| 1962|\n|   4| 1957|\n|   5| 2060|\n|   6| 1957|\n|   7| 1936|\n|   8| 1996|\n|   9| 1966|\n|  10| 1931|\n|  11| 1973|\n|  12| 1733|\n|  13| 1904|\n|  14| 2055|\n|  15| 1960|\n|  16| 1977|\n|  17| 1976|\n|  18| 1943|\n|  19| 2003|\n|  20| 2008|\n|  21| 1992|\n|  22| 1792|\n|  23|   22|\n+----+-----+\n\n"
++    }
++   ],
++   "source": [
++    "servererror_perhour_df.show(24)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 70,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# # count of ip address"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "ipcount = logDF.select('ip').\\\n",
++    "    groupBy(\"ip\").count().orderBy(col('count').desc())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 88,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------------+------+\n|             ip| count|\n+---------------+------+\n| 109.145.75.gge|226596|\n|165.124.130.jhd|213192|\n| 38.105.116.iei|193443|\n|165.124.130.igj|190611|\n|  52.23.159.dgd|190483|\n| 54.162.220.aah|133406|\n| 117.91.230.gha|124162|\n|  108.91.91.hbc|117873|\n|180.119.118.baj|112997|\n|  96.127.52.gig|111572|\n|165.124.130.jdj|106432|\n|  23.20.108.ihh| 91046|\n|  149.56.12.jbf| 86488|\n|  13.90.101.dfh| 80983|\n|  65.254.10.fdf| 80557|\n|192.223.241.fcg| 78053|\n|  209.249.4.gjc| 74681|\n|180.119.116.cjb| 74313|\n|180.119.118.fib| 72516|\n|   78.137.2.bcj| 61102|\n+---------------+------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "ipcount.show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "ipcount.write.mode('overwrite').parquet('/tmp/ipcount.parquet')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 89,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "ip1, count1 = ipcount.first()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 108,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def dftest(ip,ipcount:int,ipvalue,ipcountvalue:int):\n",
++    "\n",
++    "    if (ip == ipvalue) and (ipcount ==  ipcountvalue):\n",
++    "        print('pass')\n",
++    "    else:\n",
++    "        print('fail')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 109,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "pass\n"
++    }
++   ],
++   "source": [
++    "dftest('109.145.75.gge',226596,'109.145.75.gge',226596)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/02_s3_storage_connect.ipynb b/01-spark-etl-databricks/02_s3_storage_connect.ipynb
+new file mode 100644
+index 0000000..dc9936f
+--- /dev/null
++++ b/01-spark-etl-databricks/02_s3_storage_connect.ipynb
+@@ -0,0 +1,103 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599475842247",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 63,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# import neecessary libraries\n",
++    "from pyspark.sql import SparkSession\n",
++    "import os"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 64,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('s3').config('spark.jars',\"/home/amogh/Downloads/hadoop-aws-2.7.3.jar,/home/amogh/Downloads/aws-java-sdk-1.11.179.jar\")\n",
++    ".getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 70,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "\n",
++    "spark.conf.set(\"spark.sparkContext.hadoopConfiguration.fs.s3a.awsAccessKeyId\", )\n",
++    "spark.conf.set(\"spark.sparkContext.hadoopConfiguration.fs.s3a.awsSecretAccessKey\", \n",
++    ")\n",
++    "spark.conf.set(\"spark.sparkContext.hadoopConfiguration.fs.s3a.endpoint\", \n",
++    "'ap-south-1')\n",
++    "spark.conf.set(\"spark.sparkContext.hadoopConfiguration.fs.s3a.impl\", \n",
++    "'org.apache.hadoop.fs.s3a.S3AFileSystem')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 71,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "FlightData2015 = spark.\\\n",
++    "                    read.option(\"inferSchema\",'true').option(\"header\",'true').\\\n",
++    "                    csv('/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-master/data//flight-data/csv/2015-summary.csv')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "\n",
++    "# For databricks following to be used \n",
++    "\n",
++    "\"\"\"\n",
++    "\n",
++    "ACCESS_KEY = dbutils.secrets.get(scope = \"aws\", key = \"aws-access-key\")\n",
++    "SECRET_KEY = dbutils.secrets.get(scope = \"aws\", key = \"aws-secret-key\")\n",
++    "ENCODED_SECRET_KEY = SECRET_KEY.replace(\"/\", \"%2F\")\n",
++    "AWS_BUCKET_NAME = \"<aws-bucket-name>\"\n",
++    "MOUNT_NAME = \"<mount-name>\"\n",
++    "\n",
++    "dbutils.fs.mount(\"s3a://%s:%s@%s\" % (ACCESS_KEY, ENCODED_SECRET_KEY, AWS_BUCKET_NAME), \"/mnt/%s\" % MOUNT_NAME)\n",
++    "display(dbutils.fs.ls(\"/mnt/%s\" % MOUNT_NAME))\n",
++    "\n",
++    "\"\"\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/02_spark_S3_write.py b/01-spark-etl-databricks/02_spark_S3_write.py
+new file mode 100644
+index 0000000..70967b1
+--- /dev/null
++++ b/01-spark-etl-databricks/02_spark_S3_write.py
+@@ -0,0 +1,53 @@
++
++# --packages org.apache.hadoop:hadoop-aws:2.7.0
++# import neecessary libraries
++from pyspark.sql import SparkSession
++import os
++
++spark = SparkSession.builder.appName('s3')\
++.getOrCreate()
++
++
++
++spark.sparkContext.setSystemProperty("com.amazonaws.services.s3.enableV4", "true")
++
++hadoop_conf=spark._jsc.hadoopConfiguration()
++# see https://stackoverflow.com/questions/43454117/how-do-you-use-s3a-with-spark-2-1-0-on-aws-us-east-2
++hadoop_conf.set("fs.s3a.impl", "org.apache.hadoop.fs.s3a.S3AFileSystem")
++hadoop_conf.set("com.amazonaws.services.s3.enableV4", "true")
++hadoop_conf.set("fs.s3a.access.key", os.environ.get('access_key'))
++hadoop_conf.set("fs.s3a.secret.key", os.environ.get('secret_key'))
++hadoop_conf.set("fs.s3a.connection.maximum", "100000")
++hadoop_conf.set("fs.s3a.endpoint", "s3." + "ap-south-1"+ ".amazonaws.com")
++
++
++
++
++
++
++FlightData2015 = spark.\
++                    read.option("inferSchema",'true').option("header",'true').\
++                    csv('/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-master/data//flight-data/csv/2015-summary.csv')
++
++    
++
++FlightData2015.repartition(1).write.mode('overwrite').parquet('s3a://im-amogh/FlightData2015.parquet')
++
++
++
++# For databricks following to be used 
++
++"""
++
++ACCESS_KEY = dbutils.secrets.get(scope = "aws", key = "aws-access-key")
++SECRET_KEY = dbutils.secrets.get(scope = "aws", key = "aws-secret-key")
++ENCODED_SECRET_KEY = SECRET_KEY.replace("/", "%2F")
++AWS_BUCKET_NAME = "<aws-bucket-name>"
++MOUNT_NAME = "<mount-name>"
++
++dbutils.fs.mount("s3a://%s:%s@%s" % (ACCESS_KEY, ENCODED_SECRET_KEY, AWS_BUCKET_NAME), "/mnt/%s" % MOUNT_NAME)
++display(dbutils.fs.ls("/mnt/%s" % MOUNT_NAME))
++
++"""
++
++spark.stop()
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/04_jdbc_connect.py b/01-spark-etl-databricks/04_jdbc_connect.py
+new file mode 100644
+index 0000000..d9c2e77
+--- /dev/null
++++ b/01-spark-etl-databricks/04_jdbc_connect.py
+@@ -0,0 +1,47 @@
++"""
++spark-submit --master local --jars /home/amogh/Documents/spark_certification/jar_files/mysql-connector-java-5.1.49.jar  04_jdbc_connect.py 
++"""
++
++from pyspark.sql import SparkSession
++
++spark = SparkSession.builder.master('local')\
++    .appName('jdbc_connection').getOrCreate()
++
++
++mysql_jdbc_host = 'localhost'
++mysql_jdbc_port = 3307
++mysql_jdbc_db = 'retail'
++mysql_jdbc_user = 'retail_user'
++mysql_jdbc_password = 'amogh'
++
++
++query = " select * from orders "
++
++
++my_sql  =  spark.read.format('jdbc').\
++    option('url', 'jdbc:mysql://%s:%d/%s?useSSL=false&useUnicode=yes&characterEncoding=UTF-8&characterSetResults=UTF-8'%                 (mysql_jdbc_host,mysql_jdbc_port,mysql_jdbc_db))\
++    .option("driver", "com.mysql.jdbc.Driver")\
++    .option("user", mysql_jdbc_user) \
++    .option("password", mysql_jdbc_password) \
++    .option("query", query ) \
++    .load()
++
++
++#my_sql.show()
++
++
++my_sql_parallelism = spark.read.format('jdbc').\
++    option('url', 'jdbc:mysql://%s:%d/%s?useSSL=false&useUnicode=yes&characterEncoding=UTF-8&characterSetResults=UTF-8'%                 (mysql_jdbc_host,mysql_jdbc_port,mysql_jdbc_db))\
++    .option("driver", "com.mysql.jdbc.Driver")\
++    .option("user", mysql_jdbc_user) \
++    .option("password", mysql_jdbc_password) \
++    .option("dbtable", 'orders') \
++    .option("partitionColumn",'order_id')\
++    .option("lowerBound","1")\
++    .option("upperBound","10000")\
++    .option('numPartitions',"3")\
++    .load()
++
++my_sql_parallelism.explain()
++
++spark.stop()
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/04_jdbc_connection.ipynb b/01-spark-etl-databricks/04_jdbc_connection.ipynb
+new file mode 100644
+index 0000000..bfc4de5
+--- /dev/null
++++ b/01-spark-etl-databricks/04_jdbc_connection.ipynb
+@@ -0,0 +1,173 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599539500262",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 1,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# I am using mysql to connect by spark"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 59,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.master('local').config('spark.jars',\n",
++    "'/home/amogh/Documents/spark certification/jar_files/mysql-connector-java-5.1.49.jar')\\\n",
++    "    .appName('jdbc_connection').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 60,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "'\\ndatabricks secrets create-scope --scope jdbc\\ndatabricks secrets put --scope jdbc --key username\\ndatabricks secrets put --scope jdbc --key password\\n\\n\\n\\nval driverClass = \"com.microsoft.sqlserver.jdbc.SQLServerDriver\"\\nval connectionProperties = new java.util.Properties()\\nconnectionProperties.setProperty(\"Driver\", driverClass)\\n\\nval jdbcUsername = dbutils.secrets.get(scope = \"jdbc\", key = \"username\")\\nval jdbcPassword = dbutils.secrets.get(scope = \"jdbc\", key = \"password\")\\nconnectionProperties.put(\"user\", s\"${jdbcUsername}\")\\nconnectionProperties.put(\"password\", s\"${jdbcPassword}\")\\n\\n# read permission \\n\\ndatabricks secrets put-acl --scope jdbc --principal datascience --permission READ\\n\\n'"
++     },
++     "metadata": {},
++     "execution_count": 60
++    }
++   ],
++   "source": [
++    "# databricks use secret scope to connect to database\n",
++    "\n",
++    "\n",
++    "\"\"\"\n",
++    "databricks secrets create-scope --scope jdbc\n",
++    "databricks secrets put --scope jdbc --key username\n",
++    "databricks secrets put --scope jdbc --key password\n",
++    "\n",
++    "\n",
++    "\n",
++    "val driverClass = \"com.microsoft.sqlserver.jdbc.SQLServerDriver\"\n",
++    "val connectionProperties = new java.util.Properties()\n",
++    "connectionProperties.setProperty(\"Driver\", driverClass)\n",
++    "\n",
++    "val jdbcUsername = dbutils.secrets.get(scope = \"jdbc\", key = \"username\")\n",
++    "val jdbcPassword = dbutils.secrets.get(scope = \"jdbc\", key = \"password\")\n",
++    "connectionProperties.put(\"user\", s\"${jdbcUsername}\")\n",
++    "connectionProperties.put(\"password\", s\"${jdbcPassword}\")\n",
++    "\n",
++    "# read permission \n",
++    "\n",
++    "databricks secrets put-acl --scope jdbc --principal datascience --permission READ\n",
++    "\n",
++    "\"\"\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 61,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# from spark to read data from db it requires driver -- jar file"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 62,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "mysql_jdbc_host = 'localhost'\n",
++    "mysql_jdbc_port = 3307\n",
++    "mysql_jdbc_db = 'retail'\n",
++    "mysql_jdbc_user = 'retail_user'\n",
++    "mysql_jdbc_password = 'amogh'\n",
++    "\n",
++    "\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 63,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "query = \" select * from orders \""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 64,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "error",
++     "ename": "Py4JJavaError",
++     "evalue": "An error occurred while calling o754.load.\n: java.sql.SQLException: No suitable driver\n\tat java.sql.DriverManager.getDriver(DriverManager.java:315)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions$$anonfun$6.apply(JDBCOptions.scala:105)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions$$anonfun$6.apply(JDBCOptions.scala:105)\n\tat scala.Option.getOrElse(Option.scala:121)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:104)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:35)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JdbcRelationProvider.createRelation(JdbcRelationProvider.scala:32)\n\tat org.apache.spark.sql.execution.datasources.DataSource.resolveRelation(DataSource.scala:318)\n\tat org.apache.spark.sql.DataFrameReader.loadV1Source(DataFrameReader.scala:223)\n\tat org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:211)\n\tat org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:167)\n\tat sun.reflect.GeneratedMethodAccessor11.invoke(Unknown Source)\n\tat sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\n\tat java.lang.reflect.Method.invoke(Method.java:498)\n\tat py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)\n\tat py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:357)\n\tat py4j.Gateway.invoke(Gateway.java:282)\n\tat py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)\n\tat py4j.commands.CallCommand.execute(CallCommand.java:79)\n\tat py4j.GatewayConnection.run(GatewayConnection.java:238)\n\tat java.lang.Thread.run(Thread.java:748)\n",
++     "traceback": [
++      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
++      "\u001b[0;31mPy4JJavaError\u001b[0m                             Traceback (most recent call last)",
++      "\u001b[0;32m<ipython-input-64-1cb646aad9bb>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[1;32m      3\u001b[0m     \u001b[0;34m.\u001b[0m\u001b[0moption\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"user\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmysql_jdbc_user\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;31m \u001b[0m\u001b[0;31m\\\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m      4\u001b[0m     \u001b[0;34m.\u001b[0m\u001b[0moption\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"password\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mmysql_jdbc_password\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;31m \u001b[0m\u001b[0;31m\\\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m----> 5\u001b[0;31m     \u001b[0;34m.\u001b[0m\u001b[0moption\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m\"query\"\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0mquery\u001b[0m \u001b[0;34m)\u001b[0m\u001b[0;31m \u001b[0m\u001b[0;31m\\\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m      6\u001b[0m     \u001b[0;34m.\u001b[0m\u001b[0mload\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
++      "\u001b[0;32m~/Documents/vs_code_python/spark_itversity/sparkit/lib/python3.6/site-packages/pyspark/sql/readwriter.py\u001b[0m in \u001b[0;36mload\u001b[0;34m(self, path, format, schema, **options)\u001b[0m\n\u001b[1;32m    170\u001b[0m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_df\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_jreader\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mload\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_spark\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_sc\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_jvm\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mPythonUtils\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mtoSeq\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mpath\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    171\u001b[0m         \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 172\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_df\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0m_jreader\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mload\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m    173\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    174\u001b[0m     \u001b[0;34m@\u001b[0m\u001b[0msince\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;36m1.4\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
++      "\u001b[0;32m~/Documents/vs_code_python/spark_itversity/sparkit/lib/python3.6/site-packages/py4j/java_gateway.py\u001b[0m in \u001b[0;36m__call__\u001b[0;34m(self, *args)\u001b[0m\n\u001b[1;32m   1255\u001b[0m         \u001b[0manswer\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0mself\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgateway_client\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0msend_command\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0mcommand\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1256\u001b[0m         return_value = get_return_value(\n\u001b[0;32m-> 1257\u001b[0;31m             answer, self.gateway_client, self.target_id, self.name)\n\u001b[0m\u001b[1;32m   1258\u001b[0m \u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m   1259\u001b[0m         \u001b[0;32mfor\u001b[0m \u001b[0mtemp_arg\u001b[0m \u001b[0;32min\u001b[0m \u001b[0mtemp_args\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
++      "\u001b[0;32m~/Documents/vs_code_python/spark_itversity/sparkit/lib/python3.6/site-packages/pyspark/sql/utils.py\u001b[0m in \u001b[0;36mdeco\u001b[0;34m(*a, **kw)\u001b[0m\n\u001b[1;32m     61\u001b[0m     \u001b[0;32mdef\u001b[0m \u001b[0mdeco\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m*\u001b[0m\u001b[0ma\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0mkw\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     62\u001b[0m         \u001b[0;32mtry\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m---> 63\u001b[0;31m             \u001b[0;32mreturn\u001b[0m \u001b[0mf\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m*\u001b[0m\u001b[0ma\u001b[0m\u001b[0;34m,\u001b[0m \u001b[0;34m**\u001b[0m\u001b[0mkw\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m\u001b[1;32m     64\u001b[0m         \u001b[0;32mexcept\u001b[0m \u001b[0mpy4j\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mprotocol\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mPy4JJavaError\u001b[0m \u001b[0;32mas\u001b[0m \u001b[0me\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m     65\u001b[0m             \u001b[0ms\u001b[0m \u001b[0;34m=\u001b[0m \u001b[0me\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mjava_exception\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mtoString\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n",
++      "\u001b[0;32m~/Documents/vs_code_python/spark_itversity/sparkit/lib/python3.6/site-packages/py4j/protocol.py\u001b[0m in \u001b[0;36mget_return_value\u001b[0;34m(answer, gateway_client, target_id, name)\u001b[0m\n\u001b[1;32m    326\u001b[0m                 raise Py4JJavaError(\n\u001b[1;32m    327\u001b[0m                     \u001b[0;34m\"An error occurred while calling {0}{1}{2}.\\n\"\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0;32m--> 328\u001b[0;31m                     format(target_id, \".\", name), value)\n\u001b[0m\u001b[1;32m    329\u001b[0m             \u001b[0;32melse\u001b[0m\u001b[0;34m:\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[1;32m    330\u001b[0m                 raise Py4JError(\n",
++      "\u001b[0;31mPy4JJavaError\u001b[0m: An error occurred while calling o754.load.\n: java.sql.SQLException: No suitable driver\n\tat java.sql.DriverManager.getDriver(DriverManager.java:315)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions$$anonfun$6.apply(JDBCOptions.scala:105)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions$$anonfun$6.apply(JDBCOptions.scala:105)\n\tat scala.Option.getOrElse(Option.scala:121)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:104)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JDBCOptions.<init>(JDBCOptions.scala:35)\n\tat org.apache.spark.sql.execution.datasources.jdbc.JdbcRelationProvider.createRelation(JdbcRelationProvider.scala:32)\n\tat org.apache.spark.sql.execution.datasources.DataSource.resolveRelation(DataSource.scala:318)\n\tat org.apache.spark.sql.DataFrameReader.loadV1Source(DataFrameReader.scala:223)\n\tat org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:211)\n\tat org.apache.spark.sql.DataFrameReader.load(DataFrameReader.scala:167)\n\tat sun.reflect.GeneratedMethodAccessor11.invoke(Unknown Source)\n\tat sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\n\tat java.lang.reflect.Method.invoke(Method.java:498)\n\tat py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)\n\tat py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:357)\n\tat py4j.Gateway.invoke(Gateway.java:282)\n\tat py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)\n\tat py4j.commands.CallCommand.execute(CallCommand.java:79)\n\tat py4j.GatewayConnection.run(GatewayConnection.java:238)\n\tat java.lang.Thread.run(Thread.java:748)\n"
++     ]
++    }
++   ],
++   "source": [
++    "my_sql  =  spark.read.format('jdbc').\\\n",
++    "    option('url', 'jdbc:mysql://%s:%d/%s?useSSL=false&useUnicode=yes&characterEncoding=UTF-8&characterSetResults=UTF-8'%                 (mysql_jdbc_host,mysql_jdbc_port,mysql_jdbc_db))\\\n",
++    "    .option(\"driver\", \"com.mysql.jdbc.Driver\")\\\n",
++    "    .option(\"user\", mysql_jdbc_user) \\\n",
++    "    .option(\"password\", mysql_jdbc_password) \\\n",
++    "    .option(\"query\", query ) \\\n",
++    "    .load()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/05_json_schema.ipynb b/01-spark-etl-databricks/05_json_schema.ipynb
+new file mode 100644
+index 0000000..0141542
+--- /dev/null
++++ b/01-spark-etl-databricks/05_json_schema.ipynb
+@@ -0,0 +1,174 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599564910950",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.types import StructType,StructField,IntegerType,StringType,FloatType"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('schema').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data_path = '/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/activity-data/'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df = spark.read.format('json').load(data_path)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [],
++   "source": [
++    "activityschema = df.schema"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "<class 'pyspark.sql.types.StructType'>\n"
++    }
++   ],
++   "source": [
++    "print(type(activityschema))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[StructField(Arrival_Time,LongType,true),\n StructField(Creation_Time,LongType,true),\n StructField(Device,StringType,true),\n StructField(Index,LongType,true),\n StructField(Model,StringType,true),\n StructField(User,StringType,true),\n StructField(gt,StringType,true),\n StructField(x,DoubleType,true),\n StructField(y,DoubleType,true),\n StructField(z,DoubleType,true)]"
++     },
++     "metadata": {},
++     "execution_count": 9
++    }
++   ],
++   "source": [
++    "[filed for filed in activityschema]"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# structtype of structfield"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "activityschema2 = StructType([\n",
++    "\n",
++    "StructField('Arrival_Time',IntegerType(),True),\n",
++    "StructField('Creation_Time',IntegerType(),True),\n",
++    "StructField('Device',StringType(),True),\n",
++    "StructField('Index',IntegerType(),True),\n",
++    "StructField('Model',StringType(),True),\n",
++    "StructField('x',FloatType(),True),\n",
++    "StructField('y',FloatType(),True),\n",
++    "StructField('z',FloatType(),True),\n",
++    "StructField('gt',StringType(),True),\n",
++    "StructField('User',StringType(),True),\n",
++    "\n",
++    "\n",
++    "\n",
++    "])"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_schema = spark.read.format('json').schema(activityschema2 ).load(data_path).sample(fraction=0.05)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- Arrival_Time: integer (nullable = true)\n |-- Creation_Time: integer (nullable = true)\n |-- Device: string (nullable = true)\n |-- Index: integer (nullable = true)\n |-- Model: string (nullable = true)\n |-- x: float (nullable = true)\n |-- y: float (nullable = true)\n |-- z: float (nullable = true)\n |-- gt: string (nullable = true)\n |-- User: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df_schema.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/06_handling_corrupt_records.ipynb b/01-spark-etl-databricks/06_handling_corrupt_records.ipynb
+new file mode 100644
+index 0000000..4e0db6f
+--- /dev/null
++++ b/01-spark-etl-databricks/06_handling_corrupt_records.ipynb
+@@ -0,0 +1,161 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599571542594",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('corrupt_records').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data = \"\"\" {\"a\":1,\"b\":2,\"c\":3} | {\"a\":4,\"b\":5,\"c\":6} | {\"a\":1,\"b,\"c\":3}  \"\"\".split('|')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[' {\"a\":1,\"b\":2,\"c\":3} ', ' {\"a\":4,\"b\":5,\"c\":6} ', ' {\"a\":1,\"b,\"c\":3}  ']"
++     },
++     "metadata": {},
++     "execution_count": 7
++    }
++   ],
++   "source": [
++    "data"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "corrupt_values = spark.read.option('mode','PERMISSIVE').json(spark.sparkContext.parallelize(data))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------------------+----+----+----+\n|    _corrupt_record|   a|   b|   c|\n+-------------------+----+----+----+\n|               null|   1|   2|   3|\n|               null|   4|   5|   6|\n| {\"a\":1,\"b,\"c\":3}  |null|null|null|\n+-------------------+----+----+----+\n\n"
++    }
++   ],
++   "source": [
++    "corrupt_values.show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+---+---+\n|  a|  b|  c|\n+---+---+---+\n|  1|  2|  3|\n|  4|  5|  6|\n+---+---+---+\n\n"
++    }
++   ],
++   "source": [
++    "spark.read.option('mode','DROPMALFORMED').json(spark.sparkContext.parallelize(data)).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 18,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "An error occurred while calling o310.json.\n: org.apache.spark.SparkException: Job aborted due to stage failure: Task 1 in stage 7.0 failed 1 times, most recent failure: Lost task 1.0 in stage 7.0 (TID 11, localhost, executor driver): org.apache.spark.SparkException: Malformed records are detected in schema inference. Parse Mode: FAILFAST.\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1.apply(JsonInferSchema.scala:66)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1.apply(JsonInferSchema.scala:53)\n\tat scala.collection.Iterator$$anon$12.nextCur(Iterator.scala:435)\n\tat scala.collection.Iterator$$anon$12.hasNext(Iterator.scala:441)\n\tat scala.collection.Iterator$class.foreach(Iterator.scala:891)\n\tat scala.collection.AbstractIterator.foreach(Iterator.scala:1334)\n\tat scala.collection.TraversableOnce$class.reduceLeft(TraversableOnce.scala:185)\n\tat scala.collection.AbstractIterator.reduceLeft(Iterator.scala:1334)\n\tat scala.collection.TraversableOnce$class.reduceLeftOption(TraversableOnce.scala:203)\n\tat scala.collection.AbstractIterator.reduceLeftOption(Iterator.scala:1334)\n\tat scala.collection.TraversableOnce$class.reduceOption(TraversableOnce.scala:210)\n\tat scala.collection.AbstractIterator.reduceOption(Iterator.scala:1334)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1.apply(JsonInferSchema.scala:70)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1.apply(JsonInferSchema.scala:50)\n\tat org.apache.spark.rdd.RDD$$anonfun$mapPartitions$1$$anonfun$apply$23.apply(RDD.scala:823)\n\tat org.apache.spark.rdd.RDD$$anonfun$mapPartitions$1$$anonfun$apply$23.apply(RDD.scala:823)\n\tat org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)\n\tat org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:346)\n\tat org.apache.spark.rdd.RDD.iterator(RDD.scala:310)\n\tat org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)\n\tat org.apache.spark.scheduler.Task.run(Task.scala:123)\n\tat org.apache.spark.executor.Executor$TaskRunner$$anonfun$10.apply(Executor.scala:408)\n\tat org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1360)\n\tat org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:414)\n\tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)\n\tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)\n\tat java.lang.Thread.run(Thread.java:748)\nCaused by: com.fasterxml.jackson.core.JsonParseException: Unexpected character ('c' (code 99)): was expecting a colon to separate field name and value\n at [Source: [B@32bb75ee; line: 1, column: 14]\n\tat com.fasterxml.jackson.core.JsonParser._constructError(JsonParser.java:1581)\n\tat com.fasterxml.jackson.core.base.ParserMinimalBase._reportError(ParserMinimalBase.java:533)\n\tat com.fasterxml.jackson.core.base.ParserMinimalBase._reportUnexpectedChar(ParserMinimalBase.java:462)\n\tat com.fasterxml.jackson.core.json.UTF8StreamJsonParser._skipColon2(UTF8StreamJsonParser.java:3009)\n\tat com.fasterxml.jackson.core.json.UTF8StreamJsonParser._skipColon(UTF8StreamJsonParser.java:2984)\n\tat com.fasterxml.jackson.core.json.UTF8StreamJsonParser.nextToken(UTF8StreamJsonParser.java:744)\n\tat org.apache.spark.sql.catalyst.json.JacksonUtils$.nextUntil(JacksonUtils.scala:29)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$.inferField(JsonInferSchema.scala:134)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1$$anonfun$apply$3.apply(JsonInferSchema.scala:57)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1$$anonfun$apply$3.apply(JsonInferSchema.scala:55)\n\tat org.apache.spark.util.Utils$.tryWithResource(Utils.scala:2543)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1.apply(JsonInferSchema.scala:55)\n\t... 26 more\n\nDriver stacktrace:\n\tat org.apache.spark.scheduler.DAGScheduler.org$apache$spark$scheduler$DAGScheduler$$failJobAndIndependentStages(DAGScheduler.scala:1891)\n\tat org.apache.spark.scheduler.DAGScheduler$$anonfun$abortStage$1.apply(DAGScheduler.scala:1879)\n\tat org.apache.spark.scheduler.DAGScheduler$$anonfun$abortStage$1.apply(DAGScheduler.scala:1878)\n\tat scala.collection.mutable.ResizableArray$class.foreach(ResizableArray.scala:59)\n\tat scala.collection.mutable.ArrayBuffer.foreach(ArrayBuffer.scala:48)\n\tat org.apache.spark.scheduler.DAGScheduler.abortStage(DAGScheduler.scala:1878)\n\tat org.apache.spark.scheduler.DAGScheduler$$anonfun$handleTaskSetFailed$1.apply(DAGScheduler.scala:927)\n\tat org.apache.spark.scheduler.DAGScheduler$$anonfun$handleTaskSetFailed$1.apply(DAGScheduler.scala:927)\n\tat scala.Option.foreach(Option.scala:257)\n\tat org.apache.spark.scheduler.DAGScheduler.handleTaskSetFailed(DAGScheduler.scala:927)\n\tat org.apache.spark.scheduler.DAGSchedulerEventProcessLoop.doOnReceive(DAGScheduler.scala:2112)\n\tat org.apache.spark.scheduler.DAGSchedulerEventProcessLoop.onReceive(DAGScheduler.scala:2061)\n\tat org.apache.spark.scheduler.DAGSchedulerEventProcessLoop.onReceive(DAGScheduler.scala:2050)\n\tat org.apache.spark.util.EventLoop$$anon$1.run(EventLoop.scala:49)\n\tat org.apache.spark.scheduler.DAGScheduler.runJob(DAGScheduler.scala:738)\n\tat org.apache.spark.SparkContext.runJob(SparkContext.scala:2061)\n\tat org.apache.spark.SparkContext.runJob(SparkContext.scala:2158)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$.infer(JsonInferSchema.scala:83)\n\tat org.apache.spark.sql.execution.datasources.json.TextInputJsonDataSource$$anonfun$inferFromDataset$1.apply(JsonDataSource.scala:109)\n\tat org.apache.spark.sql.execution.datasources.json.TextInputJsonDataSource$$anonfun$inferFromDataset$1.apply(JsonDataSource.scala:109)\n\tat org.apache.spark.sql.execution.SQLExecution$.withSQLConfPropagated(SQLExecution.scala:127)\n\tat org.apache.spark.sql.execution.datasources.json.TextInputJsonDataSource$.inferFromDataset(JsonDataSource.scala:108)\n\tat org.apache.spark.sql.DataFrameReader$$anonfun$2.apply(DataFrameReader.scala:440)\n\tat org.apache.spark.sql.DataFrameReader$$anonfun$2.apply(DataFrameReader.scala:440)\n\tat scala.Option.getOrElse(Option.scala:121)\n\tat org.apache.spark.sql.DataFrameReader.json(DataFrameReader.scala:439)\n\tat org.apache.spark.sql.DataFrameReader.json(DataFrameReader.scala:420)\n\tat org.apache.spark.sql.DataFrameReader.json(DataFrameReader.scala:406)\n\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\n\tat sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\n\tat sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\n\tat java.lang.reflect.Method.invoke(Method.java:498)\n\tat py4j.reflection.MethodInvoker.invoke(MethodInvoker.java:244)\n\tat py4j.reflection.ReflectionEngine.invoke(ReflectionEngine.java:357)\n\tat py4j.Gateway.invoke(Gateway.java:282)\n\tat py4j.commands.AbstractCommand.invokeMethod(AbstractCommand.java:132)\n\tat py4j.commands.CallCommand.execute(CallCommand.java:79)\n\tat py4j.GatewayConnection.run(GatewayConnection.java:238)\n\tat java.lang.Thread.run(Thread.java:748)\nCaused by: org.apache.spark.SparkException: Malformed records are detected in schema inference. Parse Mode: FAILFAST.\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1.apply(JsonInferSchema.scala:66)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1.apply(JsonInferSchema.scala:53)\n\tat scala.collection.Iterator$$anon$12.nextCur(Iterator.scala:435)\n\tat scala.collection.Iterator$$anon$12.hasNext(Iterator.scala:441)\n\tat scala.collection.Iterator$class.foreach(Iterator.scala:891)\n\tat scala.collection.AbstractIterator.foreach(Iterator.scala:1334)\n\tat scala.collection.TraversableOnce$class.reduceLeft(TraversableOnce.scala:185)\n\tat scala.collection.AbstractIterator.reduceLeft(Iterator.scala:1334)\n\tat scala.collection.TraversableOnce$class.reduceLeftOption(TraversableOnce.scala:203)\n\tat scala.collection.AbstractIterator.reduceLeftOption(Iterator.scala:1334)\n\tat scala.collection.TraversableOnce$class.reduceOption(TraversableOnce.scala:210)\n\tat scala.collection.AbstractIterator.reduceOption(Iterator.scala:1334)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1.apply(JsonInferSchema.scala:70)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1.apply(JsonInferSchema.scala:50)\n\tat org.apache.spark.rdd.RDD$$anonfun$mapPartitions$1$$anonfun$apply$23.apply(RDD.scala:823)\n\tat org.apache.spark.rdd.RDD$$anonfun$mapPartitions$1$$anonfun$apply$23.apply(RDD.scala:823)\n\tat org.apache.spark.rdd.MapPartitionsRDD.compute(MapPartitionsRDD.scala:52)\n\tat org.apache.spark.rdd.RDD.computeOrReadCheckpoint(RDD.scala:346)\n\tat org.apache.spark.rdd.RDD.iterator(RDD.scala:310)\n\tat org.apache.spark.scheduler.ResultTask.runTask(ResultTask.scala:90)\n\tat org.apache.spark.scheduler.Task.run(Task.scala:123)\n\tat org.apache.spark.executor.Executor$TaskRunner$$anonfun$10.apply(Executor.scala:408)\n\tat org.apache.spark.util.Utils$.tryWithSafeFinally(Utils.scala:1360)\n\tat org.apache.spark.executor.Executor$TaskRunner.run(Executor.scala:414)\n\tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)\n\tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)\n\t... 1 more\nCaused by: com.fasterxml.jackson.core.JsonParseException: Unexpected character ('c' (code 99)): was expecting a colon to separate field name and value\n at [Source: UNKNOWN; line: 1, column: 14]\n\tat com.fasterxml.jackson.core.JsonParser._constructError(JsonParser.java:1581)\n\tat com.fasterxml.jackson.core.base.ParserMinimalBase._reportError(ParserMinimalBase.java:533)\n\tat com.fasterxml.jackson.core.base.ParserMinimalBase._reportUnexpectedChar(ParserMinimalBase.java:462)\n\tat com.fasterxml.jackson.core.json.UTF8StreamJsonParser._skipColon2(UTF8StreamJsonParser.java:3009)\n\tat com.fasterxml.jackson.core.json.UTF8StreamJsonParser._skipColon(UTF8StreamJsonParser.java:2984)\n\tat com.fasterxml.jackson.core.json.UTF8StreamJsonParser.nextToken(UTF8StreamJsonParser.java:744)\n\tat org.apache.spark.sql.catalyst.json.JacksonUtils$.nextUntil(JacksonUtils.scala:29)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$.inferField(JsonInferSchema.scala:134)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1$$anonfun$apply$3.apply(JsonInferSchema.scala:57)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1$$anonfun$apply$3.apply(JsonInferSchema.scala:55)\n\tat org.apache.spark.util.Utils$.tryWithResource(Utils.scala:2543)\n\tat org.apache.spark.sql.catalyst.json.JsonInferSchema$$anonfun$1$$anonfun$apply$1.apply(JsonInferSchema.scala:55)\n\t... 26 more\n\n"
++    }
++   ],
++   "source": [
++    "\n",
++    "try:\n",
++    "    spark.read.option('mode','FAILFAST').json(spark.sparkContext.parallelize(data)).show()\n",
++    "except Exception as e:\n",
++    "    print(e)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[_corrupt_record: string, a: bigint, b: bigint, c: bigint]"
++     },
++     "metadata": {},
++     "execution_count": 23
++    }
++   ],
++   "source": [
++    "spark.read.option(\"badRecordsPath\", '/home/amogh/Desktop/data/').json(spark.sparkContext.parallelize(data))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/01-spark-etl-databricks/07_loading_data_productionize.ipynb b/01-spark-etl-databricks/07_loading_data_productionize.ipynb
+new file mode 100644
+index 0000000..47120a3
+--- /dev/null
++++ b/01-spark-etl-databricks/07_loading_data_productionize.ipynb
+@@ -0,0 +1,116 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599636535821",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 1,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('loading').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data = spark.read.option('delimiter',',').option('header',True).option(\"timestampFormat\", \"mm/dd/yyyy hh:mm:ss a\").option(\"inferSchema\", True).csv(\"/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/bike-data/201508_station_data.csv\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "cols = data.columns\n",
++    "titleCols = [''.join(j for j in i.title() if not j.isspace()) for i in cols]\n",
++    "camelCols = [column[0].lower()+column[1:] for column in titleCols]"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df= data.toDF(*camelCols)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "['stationId', 'name', 'lat', 'long', 'dockcount', 'landmark', 'installation']"
++     },
++     "metadata": {},
++     "execution_count": 10
++    }
++   ],
++   "source": [
++    "df.columns"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 1,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "error",
++     "ename": "NameError",
++     "evalue": "name 'df' is not defined",
++     "traceback": [
++      "\u001b[0;31m---------------------------------------------------------------------------\u001b[0m",
++      "\u001b[0;31mNameError\u001b[0m                                 Traceback (most recent call last)",
++      "\u001b[0;32m<ipython-input-1-9c14789d52fe>\u001b[0m in \u001b[0;36m<module>\u001b[0;34m\u001b[0m\n\u001b[0;32m----> 1\u001b[0;31m \u001b[0mdf\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mrdd\u001b[0m\u001b[0;34m.\u001b[0m\u001b[0mgetNumPartitions\u001b[0m\u001b[0;34m(\u001b[0m\u001b[0;34m)\u001b[0m\u001b[0;34m\u001b[0m\u001b[0;34m\u001b[0m\u001b[0m\n\u001b[0m",
++      "\u001b[0;31mNameError\u001b[0m: name 'df' is not defined"
++     ]
++    }
++   ],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/02-spark-transformations-databricks/01_tranformation.ipynb b/02-spark-transformations-databricks/01_tranformation.ipynb
+new file mode 100644
+index 0000000..0891664
+--- /dev/null
++++ b/02-spark-transformations-databricks/01_tranformation.ipynb
+@@ -0,0 +1,214 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599721719765",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.functions import col, max, min"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('transform').config('spark.sql.sources.bucketing.enabled',True).getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Normalization \n",
++    "# Normalization restrunction of data in normal data range ( 0-1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "integer = spark.range(100,1000).toDF('id')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 27,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "colmin = integer.select(min('id')).first()[0]\n",
++    "colm = integer.select(max('id')).first()[0]"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [],
++   "source": [
++    "normalizedata = integer.withColumn(\"normalizedValue\", ( col(\"id\") - colmin )/ (colmax - colmin ) )"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Imputing missing values"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 30,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Null values dropiing these records\n",
++    "# Adding  a placeholder \n",
++    "# basic imputing :- allows to use best guess by mean \n",
++    "# advanced imputing  :- oversampling or clustering"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 33,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df = spark.createDataFrame([\n",
++    "\n",
++    "      (11, 66, 5),\n",
++    "  (12, 68, None),\n",
++    "  (1, None, 6),\n",
++    "  (2, 72, 7)], \n",
++    "  [\"hour\", \"temperature\", \"wind\"]\n",
++    "\n",
++    ")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----+-----------+----+\n|hour|temperature|wind|\n+----+-----------+----+\n|  11|         66|   5|\n|   2|         72|   7|\n+----+-----------+----+\n\n"
++    }
++   ],
++   "source": [
++    "df.dropna().show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# impute values with mean"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 37,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[hour: bigint, temperature: bigint, wind: bigint]"
++     },
++     "metadata": {},
++     "execution_count": 37
++    }
++   ],
++   "source": [
++    "df.fillna({\"temperature\": 68, \"wind\": 6})"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 38,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# deduplicate data"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 39,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "duplicateDF = spark.createDataFrame([\n",
++    "  (15342, \"Conor\", \"red\"),\n",
++    "  (15342, \"conor\", \"red\"),\n",
++    "  (12512, \"Dorothy\", \"blue\"),\n",
++    "  (5234, \"Doug\", \"aqua\")], \n",
++    "  [\"id\", \"name\", \"favorite_color\"]\n",
++    ")\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 41,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-----+-------+--------------+\n|   id|   name|favorite_color|\n+-----+-------+--------------+\n|15342|  Conor|           red|\n| 5234|   Doug|          aqua|\n|12512|Dorothy|          blue|\n+-----+-------+--------------+\n\n"
++    }
++   ],
++   "source": [
++    "duplicateDF.dropDuplicates([\"favorite_color\",\"id\"]).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/02-spark-transformations-databricks/02_udf.ipynb b/02-spark-transformations-databricks/02_udf.ipynb
+new file mode 100644
+index 0000000..7ba5694
+--- /dev/null
++++ b/02-spark-transformations-databricks/02_udf.ipynb
+@@ -0,0 +1,359 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599724965204",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.types import StringType\n",
++    "from pyspark.sql.functions import sha1, rand\n",
++    "import time"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('udf').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def manual_split(x):\n",
++    "  return x.split(\"e\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "\n",
++    "manualSplitPythonUDF = spark.udf.register(\"manualSplitSQLUDF\", manual_split, StringType())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "randomDf = spark.range(100,1000*10).\\\n",
++    "    withColumn('random_v', rand(seed=10).cast(\"string\") )\\\n",
++    "    .withColumn(\"hash\", sha1(\"random_v\"))\\\n",
++    "  .drop(\"random_value\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+-------------------+--------------------+\n| id|           random_v|                hash|\n+---+-------------------+--------------------+\n|100|0.41371264720975787|6f65a37773e1a173a...|\n|101| 0.7311719281896606|3c5f154011aa08151...|\n|102| 0.9031701155118229|28fc878d1f1942bd7...|\n|103|0.09430205113458567|9c54ebb1c11c92d4c...|\n|104|0.38340505276222947|46500976da0a25029...|\n|105| 0.5569246135523511|9d8e41374ef6637e2...|\n|106| 0.4977441406613893|29d9fa515d557568a...|\n|107| 0.2076666106201438|672da7735c57d6707...|\n|108| 0.9571919406508957|e6fb1c43359cff2d7...|\n|109| 0.7429395461204413|8e3f2b2dfae9a25aa...|\n|110| 0.3383362304807752|9b6f99aeded8d7460...|\n|111| 0.6701724731609291|455139cdd2f5c2459...|\n|112| 0.6417696089901257|38ee7efbe6c15078b...|\n|113| 0.7241109765059401|d81a35b183bf54307...|\n|114|0.34089575652338666|1bd6062a7dec0b5a8...|\n|115|0.24856531779931312|9b691311770dcc119...|\n|116| 0.5334251467105187|fa17c59f6eaef857b...|\n|117|0.06447333000037836|54d37471df5d8bbcf...|\n|118|0.19426472258759375|dcbeb20ec22b96d73...|\n|119| 0.2628801474534338|39236784e33cc3ce7...|\n+---+-------------------+--------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "randomDf.show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "randomAugmentedDF = randomDf.select(\"*\", manualSplitPythonUDF(\"hash\").alias(\"augmented_col\"))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 18,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+-------------------+--------------------+--------------------+\n| id|           random_v|                hash|       augmented_col|\n+---+-------------------+--------------------+--------------------+\n|100|0.41371264720975787|6f65a37773e1a173a...|[6f65a37773, 1a17...|\n|101| 0.7311719281896606|3c5f154011aa08151...|[3c5f154011aa0815...|\n|102| 0.9031701155118229|28fc878d1f1942bd7...|[28fc878d1f1942bd...|\n|103|0.09430205113458567|9c54ebb1c11c92d4c...|[9c54, bb1c11c92d...|\n|104|0.38340505276222947|46500976da0a25029...|[46500976da0a2502...|\n|105| 0.5569246135523511|9d8e41374ef6637e2...|[9d8, 41374, f663...|\n|106| 0.4977441406613893|29d9fa515d557568a...|[29d9fa515d557568...|\n|107| 0.2076666106201438|672da7735c57d6707...|[672da7735c57d670...|\n|108| 0.9571919406508957|e6fb1c43359cff2d7...|[, 6fb1c43359cff2...|\n|109| 0.7429395461204413|8e3f2b2dfae9a25aa...|[8, 3f2b2dfa, 9a2...|\n|110| 0.3383362304807752|9b6f99aeded8d7460...|[9b6f99a, d, d8d7...|\n|111| 0.6701724731609291|455139cdd2f5c2459...|[455139cdd2f5c245...|\n|112| 0.6417696089901257|38ee7efbe6c15078b...|[38, , 7, fb, 6c1...|\n|113| 0.7241109765059401|d81a35b183bf54307...|[d81a35b183bf5430...|\n|114|0.34089575652338666|1bd6062a7dec0b5a8...|[1bd6062a7d, c0b5...|\n|115|0.24856531779931312|9b691311770dcc119...|[9b691311770dcc11...|\n|116| 0.5334251467105187|fa17c59f6eaef857b...|[fa17c59f6, a, f8...|\n|117|0.06447333000037836|54d37471df5d8bbcf...|[54d37471df5d8bbc...|\n|118|0.19426472258759375|dcbeb20ec22b96d73...|[dcb, b20, c22b96...|\n|119| 0.2628801474534338|39236784e33cc3ce7...|[39236784, 33cc3c...|\n+---+-------------------+--------------------+--------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "randomAugmentedDF.show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 19,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# task"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 20,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def ip(ipstring):\n",
++    "\n",
++    "    A,B,C,D = [int(i) for i in ipstring.split('.')]\n",
++    "\n",
++    "    return A*256**3 + B*256**2 + C*256 + D"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql.types import LongType\n",
++    "\n",
++    "IPConvertUDF = spark.udf.register(\"IPConvertUDF\", ip, LongType())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "IPDF = spark.createDataFrame([[\"123.123.123.123\"], [\"1.2.3.4\"], [\"127.0.0.0\"]], ['ip'])"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------------+----------+\n|             ip|  parsedIP|\n+---------------+----------+\n|123.123.123.123|2071690107|\n|        1.2.3.4|  16909060|\n|      127.0.0.0|2130706432|\n+---------------+----------+\n\n"
++    }
++   ],
++   "source": [
++    "IPDFWithParsedIP = IPDF.withColumn(\"parsedIP\", IPConvertUDF(\"ip\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Advanced udf"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 26,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def manual_add(x,y):\n",
++    "\n",
++    "    return x+y"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 27,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql.types import IntegerType\n",
++    "\n",
++    "manualAddPythonUDF = spark.udf.register(\"manualAddSQLUDF\", manual_add, IntegerType())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "integerDF = (spark.createDataFrame([\n",
++    "  (1, 2),\n",
++    "  (3, 4),\n",
++    "  (5, 6)\n",
++    "], [\"col1\", \"col2\"]))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 31,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----+----+---+\n|col1|col2|sum|\n+----+----+---+\n|   1|   2|  3|\n|   3|   4|  7|\n|   5|   6| 11|\n+----+----+---+\n\n"
++    }
++   ],
++   "source": [
++    "integerDF.select('*',manualAddPythonUDF(\"col1\", \"col2\").alias('sum')).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 32,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql.types import FloatType,StringType,StructType,StructField"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 33,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "mathOperationsSchema = StructType([\n",
++    "  StructField(\"sum\", FloatType(), True), \n",
++    "  StructField(\"multiplication\", FloatType(), True), \n",
++    "  StructField(\"division\", FloatType(), True) \n",
++    "])"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "(3.0, 2.0, 0.5)"
++     },
++     "metadata": {},
++     "execution_count": 34
++    }
++   ],
++   "source": [
++    "def manual_math(x, y):\n",
++    "  return (float(x + y), float(x * y), x / float(y))\n",
++    "\n",
++    "manual_math(1, 2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "manualMathPythonUDF = spark.udf.register(\"manualMathSQLUDF\", manual_math, mathOperationsSchema)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[col1: bigint, col2: bigint, sum: struct<sum:float,multiplication:float,division:float>]"
++     },
++     "metadata": {},
++     "execution_count": 36
++    }
++   ],
++   "source": [
++    "integerDF.select(\"*\", manualMathPythonUDF(\"col1\", \"col2\").alias(\"sum\"))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 37,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql.functions import pandas_udf,PandasUDFType"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 42,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "@pandas_udf('double', PandasUDFType.SCALAR)\n",
++    "def pandas_plus_one(v):\n",
++    "    return v + 1"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 47,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[id: bigint, id_transformed: double]"
++     },
++     "metadata": {},
++     "execution_count": 47
++    }
++   ],
++   "source": [
++    "df = spark.range(0, 10 * 1000 * 1000)\n",
++    "df.withColumn('id_transformed', pandas_plus_one(\"id\"))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/joins.ipynb b/joins.ipynb
+new file mode 100644
+index 0000000..c5b7fae
+--- /dev/null
++++ b/joins.ipynb
+@@ -0,0 +1,244 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599804931410",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 1,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('joins').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# \n",
++    "person = spark.createDataFrame([\n",
++    "(0, \"Bill Chambers\", 0, [100]),\n",
++    "(1, \"Matei Zaharia\", 1, [500, 250, 100]),\n",
++    "(2, \"Michael Armbrust\", 1, [250, 100])])\\\n",
++    ".toDF(\"id\", \"name\", \"graduate_program\", \"spark_status\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "graduateProgram = spark.createDataFrame([\n",
++    "(0, \"Masters\", \"School of Information\", \"UC Berkeley\"),\n",
++    "(2, \"Masters\", \"EECS\", \"UC Berkeley\"),\n",
++    "(1, \"Ph.D.\", \"EECS\", \"UC Berkeley\")])\\\n",
++    ".toDF(\"id\", \"degree\", \"department\", \"school\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "sparkStatus = spark.createDataFrame([\n",
++    "(500, \"Vice President\"),\n",
++    "(250, \"PMC Member\"),\n",
++    "(100, \"Contributor\")])\\\n",
++    ".toDF(\"id\", \"status\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "person.createOrReplaceTempView(\"person\")\n",
++    "graduateProgram.createOrReplaceTempView(\"graduateProgram\")\n",
++    "sparkStatus.createOrReplaceTempView(\"sparkStatus\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "joinexpression = person['graduate_program'] == graduateProgram['id']"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+----------------+----------------+---------------+---+-------+--------------------+-----------+\n| id|            name|graduate_program|   spark_status| id| degree|          department|     school|\n+---+----------------+----------------+---------------+---+-------+--------------------+-----------+\n|  0|   Bill Chambers|               0|          [100]|  0|Masters|School of Informa...|UC Berkeley|\n|  1|   Matei Zaharia|               1|[500, 250, 100]|  1|  Ph.D.|                EECS|UC Berkeley|\n|  2|Michael Armbrust|               1|     [250, 100]|  1|  Ph.D.|                EECS|UC Berkeley|\n+---+----------------+----------------+---------------+---+-------+--------------------+-----------+\n\n"
++    }
++   ],
++   "source": [
++    "person.join(graduateProgram,joinexpression).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----+----------------+----------------+---------------+---+-------+--------------------+-----------+\n|  id|            name|graduate_program|   spark_status| id| degree|          department|     school|\n+----+----------------+----------------+---------------+---+-------+--------------------+-----------+\n|   0|   Bill Chambers|               0|          [100]|  0|Masters|School of Informa...|UC Berkeley|\n|   1|   Matei Zaharia|               1|[500, 250, 100]|  1|  Ph.D.|                EECS|UC Berkeley|\n|   2|Michael Armbrust|               1|     [250, 100]|  1|  Ph.D.|                EECS|UC Berkeley|\n|null|            null|            null|           null|  2|Masters|                EECS|UC Berkeley|\n+----+----------------+----------------+---------------+---+-------+--------------------+-----------+\n\n"
++    }
++   ],
++   "source": [
++    "joinType = \"outer\"\n",
++    "person.join(graduateProgram, joinexpression , joinType).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+-------+--------------------+-----------+----+----------------+----------------+---------------+\n| id| degree|          department|     school|  id|            name|graduate_program|   spark_status|\n+---+-------+--------------------+-----------+----+----------------+----------------+---------------+\n|  0|Masters|School of Informa...|UC Berkeley|   0|   Bill Chambers|               0|          [100]|\n|  1|  Ph.D.|                EECS|UC Berkeley|   1|   Matei Zaharia|               1|[500, 250, 100]|\n|  1|  Ph.D.|                EECS|UC Berkeley|   2|Michael Armbrust|               1|     [250, 100]|\n|  2|Masters|                EECS|UC Berkeley|null|            null|            null|           null|\n+---+-------+--------------------+-----------+----+----------------+----------------+---------------+\n\n"
++    }
++   ],
++   "source": [
++    "joinType = \"left_outer\"\n",
++    "graduateProgram.join(person, joinexpression, joinType).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----+----------------+----------------+---------------+---+-------+--------------------+-----------+\n|  id|            name|graduate_program|   spark_status| id| degree|          department|     school|\n+----+----------------+----------------+---------------+---+-------+--------------------+-----------+\n|   0|   Bill Chambers|               0|          [100]|  0|Masters|School of Informa...|UC Berkeley|\n|   1|   Matei Zaharia|               1|[500, 250, 100]|  1|  Ph.D.|                EECS|UC Berkeley|\n|   2|Michael Armbrust|               1|     [250, 100]|  1|  Ph.D.|                EECS|UC Berkeley|\n|null|            null|            null|           null|  2|Masters|                EECS|UC Berkeley|\n+----+----------------+----------------+---------------+---+-------+--------------------+-----------+\n\n"
++    }
++   ],
++   "source": [
++    "joinType = \"right_outer\"\n",
++    "person.join(graduateProgram, joinexpression, joinType).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+-------+----------+-----------+\n| id| degree|department|     school|\n+---+-------+----------+-----------+\n|  2|Masters|      EECS|UC Berkeley|\n+---+-------+----------+-----------+\n\n"
++    }
++   ],
++   "source": [
++    "joinType = \"left_anti\"\n",
++    "graduateProgram.join(person, joinexpression, joinType).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 18,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+-------+--------------------+-----------+---+----------------+----------------+---------------+\n| id| degree|          department|     school| id|            name|graduate_program|   spark_status|\n+---+-------+--------------------+-----------+---+----------------+----------------+---------------+\n|  0|Masters|School of Informa...|UC Berkeley|  0|   Bill Chambers|               0|          [100]|\n|  1|  Ph.D.|                EECS|UC Berkeley|  1|   Matei Zaharia|               1|[500, 250, 100]|\n|  1|  Ph.D.|                EECS|UC Berkeley|  2|Michael Armbrust|               1|     [250, 100]|\n+---+-------+--------------------+-----------+---+----------------+----------------+---------------+\n\n"
++    }
++   ],
++   "source": [
++    "joinType = \"cross\"\n",
++    "graduateProgram.join(person, joinexpression, joinType).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "gradProgram2 = graduateProgram.union(spark.createDataFrame([\n",
++    "(0, \"Masters\", \"Duplicated Row\", \"Duplicated School\")]))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---+-------+--------------------+-----------------+\n| id| degree|          department|           school|\n+---+-------+--------------------+-----------------+\n|  0|Masters|School of Informa...|      UC Berkeley|\n|  0|Masters|      Duplicated Row|Duplicated School|\n|  1|  Ph.D.|                EECS|      UC Berkeley|\n+---+-------+--------------------+-----------------+\n\n"
++    }
++   ],
++   "source": [
++    "gradProgram2.join(person, joinexpression, 'left_semi').show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/02_Spark_Query_Execution.ipynb b/spark_notes/02_Spark_Query_Execution.ipynb
+new file mode 100644
+index 0000000..0afad85
+--- /dev/null
++++ b/spark_notes/02_Spark_Query_Execution.ipynb
+@@ -0,0 +1,158 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599223152194",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 1,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.Builder().appName('sparkexecution').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df1 = spark.range(2,10000000,2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df2 = spark.range(2, 10000000, 4)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "step1 = df1.repartition(5)\n",
++    "step2 = df2.repartition(6)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "['id']"
++     },
++     "metadata": {},
++     "execution_count": 7
++    }
++   ],
++   "source": [
++    "df1.columns"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "step3 = step1.selectExpr(\"id * 5 as id\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "step4 = step3.join(step2,['id'])"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "step4 = step3.selectExpr(\"sum(id)\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(sum(id)=124999975000000)]"
++     },
++     "metadata": {},
++     "execution_count": 12
++    }
++   ],
++   "source": [
++    "step4.collect()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "== Physical Plan ==\n*(3) HashAggregate(keys=[], functions=[sum(id#9L)])\n+- Exchange SinglePartition\n   +- *(2) HashAggregate(keys=[], functions=[partial_sum(id#9L)])\n      +- *(2) Project [(id#0L * 5) AS id#9L]\n         +- Exchange RoundRobinPartitioning(5)\n            +- *(1) Range (2, 10000000, step=2, splits=2)\n"
++    }
++   ],
++   "source": [
++    "step4.explain()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/03_spark_context.ipynb b/spark_notes/03_spark_context.ipynb
+new file mode 100644
+index 0000000..b82893e
+--- /dev/null
++++ b/spark_notes/03_spark_context.ipynb
+@@ -0,0 +1,223 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599316538577",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark import SparkContext \n",
++    "sc = SparkContext(\"local\", \"first app\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 53,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data = [1,2,3,4]"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# create data in distributed way \n",
++    "distData = sc.parallelize(data)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[1, 2, 3, 4]"
++     },
++     "metadata": {},
++     "execution_count": 9
++    }
++   ],
++   "source": [
++    "distData.collect()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "<class 'pyspark.rdd.RDD'>\n"
++    }
++   ],
++   "source": [
++    "print(type(distData))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# read data from file"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "file_path = '/home/amogh/Documents/spark certification/Spark-The-Definitive-Guide-master/data//flight-data/csv/2015-summary.csv'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data = sc.textFile(file_path)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "split_data = data.map(lambda x : x.split(','))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "#split_data.collect()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "filter_header_country = split_data.filter(lambda s : 'DEST_COUNTRY_NAME' not in s[0])"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 47,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "get_start_of_country = filter_header_country.map(lambda s : [s[0].split(' ')[0], s[2]] )"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 48,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[('United', '986'),\n ('Egypt', '15'),\n ('Costa', '588'),\n ('Senegal', '40'),\n ('Moldova', '1'),\n ('Guyana', '64'),\n ('Malta', '1'),\n ('Anguilla', '41'),\n ('Bolivia', '30'),\n ('Algeria', '4'),\n ('Turks', '230'),\n ('Saint', '39'),\n ('Italy', '382'),\n ('Pakistan', '12'),\n ('Iceland', '181'),\n ('Marshall', '42'),\n ('Luxembourg', '155'),\n ('Honduras', '362'),\n ('The', '955'),\n ('El', '561'),\n ('Samoa', '25'),\n ('Switzerland', '294'),\n ('Sint', '325'),\n ('Hong', '332'),\n ('Trinidad', '211'),\n ('Latvia', '19'),\n ('Suriname', '1'),\n ('Mexico', '7140'),\n ('Ecuador', '268'),\n ('Colombia', '873'),\n ('Norway', '121'),\n ('Thailand', '3'),\n ('Venezuela', '290'),\n ('Panama', '510'),\n ('Antigua', '126'),\n ('Morocco', '15'),\n ('Azerbaijan', '21'),\n ('New', '111'),\n ('Liberia', '2'),\n ('Hungary', '2'),\n ('Burkina', '1'),\n ('Sweden', '118'),\n ('Israel', '134'),\n ('Ethiopia', '13'),\n ('Martinique', '44'),\n ('Barbados', '154'),\n ('Djibouti', '1'),\n ('Germany', '1468'),\n ('Ireland', '335'),\n ('Zambia', '1'),\n ('Malaysia', '2'),\n ('Croatia', '2'),\n ('Cyprus', '1'),\n ('Fiji', '24'),\n ('Qatar', '108'),\n ('Kuwait', '32'),\n ('Taiwan', '266'),\n ('Haiti', '226'),\n ('Canada', '8399'),\n ('Federated', '69'),\n ('Jamaica', '666'),\n ('Dominican', '1353'),\n ('Japan', '1548'),\n ('Finland', '26'),\n ('Aruba', '346'),\n ('French', '5'),\n ('India', '61'),\n ('British', '107'),\n ('Brazil', '853'),\n ('Singapore', '3'),\n ('Netherlands', '776'),\n ('Denmark', '153'),\n ('China', '772'),\n ('Cayman', '314'),\n ('Argentina', '180'),\n ('Peru', '279'),\n ('South', '36'),\n ('Spain', '420'),\n ('Bermuda', '183'),\n ('Kiribati', '26'),\n ('Saudi', '83'),\n ('Czech', '13'),\n ('Belgium', '259'),\n ('Curacao', '90'),\n ('Georgia', '2'),\n ('Philippines', '134'),\n ('Grenada', '53'),\n ('Cape', '20'),\n ('Cote', '1'),\n ('Ukraine', '14'),\n ('Russia', '176'),\n ('Guatemala', '397'),\n ('Paraguay', '60'),\n ('Kosovo', '1'),\n ('Tunisia', '3'),\n ('Niger', '2'),\n ('Turkey', '138'),\n ('Romania', '14'),\n ('Papua', '3'),\n ('Iraq', '1'),\n ('Cuba', '466'),\n ('Dominica', '20'),\n ('Portugal', '127'),\n ('Bahrain', '19'),\n ('Indonesia', '1'),\n ('Belize', '188'),\n ('Nicaragua', '179'),\n ('Austria', '62'),\n ('Jordan', '44'),\n ('Palau', '30'),\n ('Angola', '15'),\n ('Ghana', '18'),\n ('Guadeloupe', '56'),\n ('France', '935'),\n ('Poland', '32'),\n ('Nigeria', '59'),\n ('Greenland', '2'),\n ('Chile', '174'),\n ('Australia', '329'),\n ('Cook', '13'),\n ('Bulgaria', '3'),\n ('Uruguay', '43'),\n ('\"Bonaire', ' and Saba\"'),\n ('Greece', '30')]"
++     },
++     "metadata": {},
++     "execution_count": 48
++    }
++   ],
++   "source": [
++    "get_start_of_country.reduceByKey(lambda a ,b :max(a,b)).collect()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 49,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# config properties"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 50,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[('spark.master', 'local'),\n ('spark.driver.host', '192.168.0.101'),\n ('spark.app.id', 'local-1599318966722'),\n ('spark.app.name', 'first app'),\n ('spark.rdd.compress', 'True'),\n ('spark.serializer.objectStreamReset', '100'),\n ('spark.driver.port', '43281'),\n ('spark.executor.id', 'driver'),\n ('spark.submit.deployMode', 'client'),\n ('spark.ui.showConsoleProgress', 'true')]"
++     },
++     "metadata": {},
++     "execution_count": 50
++    }
++   ],
++   "source": [
++    "sc.getConf().getAll()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 55,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "ParallelCollectionRDD[31] at parallelize at PythonRDD.scala:195"
++     },
++     "metadata": {},
++     "execution_count": 55
++    }
++   ],
++   "source": [
++    "# partition = 3\n",
++    "sc.parallelize(data,3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/04_sparksession.ipynb b/spark_notes/04_sparksession.ipynb
+new file mode 100644
+index 0000000..ed40e4a
+--- /dev/null
++++ b/spark_notes/04_sparksession.ipynb
+@@ -0,0 +1,139 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599490830064",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 20,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# creating dataframe using list\n",
++    "# create dataframe using set\n",
++    "# create dataframe from pandas\n",
++    "# create dataframe from range"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# list"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "import pandas as pd\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('df').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------+\n|Numbers|\n+-------+\n|      0|\n|      1|\n|      2|\n|      3|\n|      4|\n|      5|\n|      6|\n|      7|\n|      8|\n|      9|\n|     10|\n|     11|\n|     12|\n|     13|\n|     14|\n|     15|\n|     16|\n|     17|\n|     18|\n|     19|\n+-------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "int_list = [[i] for i in range(100)]\n",
++    "\n",
++    "spark.createDataFrame(int_list,['Numbers']).show()\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+------+-----------+\n|  Name|EnergyMeter|\n+------+-----------+\n|  Manu|        100|\n|Aditya|         90|\n+------+-----------+\n\n"
++    }
++   ],
++   "source": [
++    "a_set = (('Manu','100'),('Aditya','90'))\n",
++    "spark.createDataFrame(a_set, ['Name', 'EnergyMeter']).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 19,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# pandas \n",
++    "\n",
++    "df = pd.DataFrame({'first':range(200), 'second':range(300,500)})\n",
++    "df = spark.createDataFrame(df)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[id: bigint]"
++     },
++     "metadata": {},
++     "execution_count": 21
++    }
++   ],
++   "source": [
++    "spark.range(100)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/05_dataframe_01.ipynb b/spark_notes/05_dataframe_01.ipynb
+new file mode 100644
+index 0000000..b948ebc
+--- /dev/null
++++ b/spark_notes/05_dataframe_01.ipynb
+@@ -0,0 +1,223 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599553496705",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.types import IntegerType\n",
++    "import pyspark.sql.functions as F\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('dataframe_one').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data_path = \"/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/bike-data/201508_trip_data.csv\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df = spark.read.option('inferSchema',True).option('header',True).csv(data_path)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "display_data",
++     "data": {
++      "text/plain": "DataFrame[Trip ID: int, Duration: int, Start Date: string, Start Station: string, Start Terminal: int, End Date: string, End Station: string, End Terminal: int, Bike #: int, Subscriber Type: string, Zip Code: string]"
++     },
++     "metadata": {}
++    }
++   ],
++   "source": [
++    "display(df)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# spark has its own datatypes"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# udf "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def addOne(rec):\n",
++    "\n",
++    "    return rec + 1\n",
++    "    "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "udf_func = spark.udf.register('add1', addOne, IntegerType())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "<function __main__.addOne(rec)>"
++     },
++     "metadata": {},
++     "execution_count": 15
++    }
++   ],
++   "source": [
++    "udf_func"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------+--------+\n|Duration+1|Duration|\n+----------+--------+\n|       766|     765|\n|      1037|    1036|\n|       308|     307|\n|       410|     409|\n|       790|     789|\n|       294|     293|\n|       897|     896|\n|       256|     255|\n|       127|     126|\n|       933|     932|\n|       692|     691|\n|       634|     633|\n|       388|     387|\n|       282|     281|\n|       425|     424|\n|       284|     283|\n|       146|     145|\n|       704|     703|\n|       606|     605|\n|       903|     902|\n+----------+--------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "tmp_table = df.select(udf_func(\"Duration\").alias('Duration+1'),F.col(\"Duration\").alias('Duration')).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------+--------+---------------+--------------------+--------------+---------------+--------------------+------------+------+---------------+--------+\n|Trip ID|Duration|     Start Date|       Start Station|Start Terminal|       End Date|         End Station|End Terminal|Bike #|Subscriber Type|Zip Code|\n+-------+--------+---------------+--------------------+--------------+---------------+--------------------+------------+------+---------------+--------+\n| 913460|     765|8/31/2015 23:26|Harry Bridges Pla...|            50|8/31/2015 23:39|San Francisco Cal...|          70|   288|     Subscriber|    2139|\n| 913459|    1036|8/31/2015 23:11|San Antonio Shopp...|            31|8/31/2015 23:28|Mountain View Cit...|          27|    35|     Subscriber|   95032|\n| 913455|     307|8/31/2015 23:13|      Post at Kearny|            47|8/31/2015 23:18|   2nd at South Park|          64|   468|     Subscriber|   94107|\n| 913454|     409|8/31/2015 23:10|  San Jose City Hall|            10|8/31/2015 23:17| San Salvador at 1st|           8|    68|     Subscriber|   95113|\n| 913453|     789|8/31/2015 23:09|Embarcadero at Fo...|            51|8/31/2015 23:22|Embarcadero at Sa...|          60|   487|       Customer|    9069|\n| 913452|     293|8/31/2015 23:07|Yerba Buena Cente...|            68|8/31/2015 23:12|San Francisco Cal...|          70|   538|     Subscriber|   94118|\n| 913451|     896|8/31/2015 23:07|Embarcadero at Fo...|            51|8/31/2015 23:22|Embarcadero at Sa...|          60|   363|       Customer|   92562|\n| 913450|     255|8/31/2015 22:16|Embarcadero at Sa...|            60|8/31/2015 22:20|   Steuart at Market|          74|   470|     Subscriber|   94111|\n| 913449|     126|8/31/2015 22:12|     Beale at Market|            56|8/31/2015 22:15|Temporary Transba...|          55|   439|     Subscriber|   94130|\n| 913448|     932|8/31/2015 21:57|      Post at Kearny|            47|8/31/2015 22:12|South Van Ness at...|          66|   472|     Subscriber|   94702|\n| 913443|     691|8/31/2015 21:49|Embarcadero at Sa...|            60|8/31/2015 22:01|   Market at Sansome|          77|   434|     Subscriber|   94109|\n| 913442|     633|8/31/2015 21:44|      Market at 10th|            67|8/31/2015 21:54|San Francisco Cal...|          70|   531|     Subscriber|   94107|\n| 913441|     387|8/31/2015 21:39|       Market at 4th|            76|8/31/2015 21:46|Grant Avenue at C...|          73|   383|     Subscriber|   94104|\n| 913440|     281|8/31/2015 21:31|   Market at Sansome|            77|8/31/2015 21:36|Broadway St at Ba...|          82|   621|     Subscriber|   94107|\n| 913435|     424|8/31/2015 21:25|Temporary Transba...|            55|8/31/2015 21:33|San Francisco Cal...|          69|   602|     Subscriber|   94401|\n| 913434|     283|8/31/2015 21:19|San Francisco Cal...|            69|8/31/2015 21:24|     Townsend at 7th|          65|   521|     Subscriber|   94107|\n| 913433|     145|8/31/2015 21:17|University and Em...|            35|8/31/2015 21:20|Cowper at University|          37|    75|       Customer|    6907|\n| 913432|     703|8/31/2015 21:16|     Spear at Folsom|            49|8/31/2015 21:28|San Francisco Cal...|          69|   426|     Subscriber|   95032|\n| 913431|     605|8/31/2015 21:11|Temporary Transba...|            55|8/31/2015 21:21|Grant Avenue at C...|          73|   572|     Subscriber|   94133|\n| 913429|     902|8/31/2015 21:07|San Francisco Cal...|            70|8/31/2015 21:22|Broadway St at Ba...|          82|   501|     Subscriber|   94133|\n+-------+--------+---------------+--------------------+--------------+---------------+--------------------+------------+------+---------------+--------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def duration_arr(rec):\n",
++    "\n",
++    "    if rec < 300:\n",
++    "        x = 0 \n",
++    "    elif rec <= 400:\n",
++    "        x = 1\n",
++    "    elif rec <= 500:\n",
++    "        x = 2\n",
++    "    else:\n",
++    "        x= 3\n",
++    "    return x"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 26,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "udf_func2 = spark.udf.register('add2',duration_arr,IntegerType())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------+--------+\n|replace|Duration|\n+-------+--------+\n|      3|     765|\n|      3|    1036|\n|      1|     307|\n|      2|     409|\n|      3|     789|\n|      0|     293|\n|      3|     896|\n|      0|     255|\n|      0|     126|\n|      3|     932|\n|      3|     691|\n|      3|     633|\n|      1|     387|\n|      0|     281|\n|      2|     424|\n|      0|     283|\n|      0|     145|\n|      3|     703|\n|      3|     605|\n|      3|     902|\n+-------+--------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(udf_func2(\"Duration\").alias('replace'),F.col(\"Duration\").alias('Duration')).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/06_dataframe_02.ipynb b/spark_notes/06_dataframe_02.ipynb
+new file mode 100644
+index 0000000..5b40355
+--- /dev/null
++++ b/spark_notes/06_dataframe_02.ipynb
+@@ -0,0 +1,313 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599642343375",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 1,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "import os"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('df2').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "\"\\nspark.read.format(...)\\n.option('mode','...')\\n.option('inferSchema', '...')\\n.option('path', '...')\\n.schema(...)\\n.load()\\n\""
++     },
++     "metadata": {},
++     "execution_count": 3
++    }
++   ],
++   "source": [
++    "\"\"\"\n",
++    "spark.read.format(...)\n",
++    ".option('mode','...')\n",
++    ".option('inferSchema', '...')\n",
++    ".option('path', '...')\n",
++    ".schema(...)\n",
++    ".load()\n",
++    "\"\"\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "'\\nSpark has 6 core data sources for which out of the box reading capability is provided:\\n\\n    CSV: Comma seperated values\\n    JSON: JavaScipt Object Notation\\n    Parquet: An open source column oriented data storage format\\n    Plane/text file\\n    ORC: An open source column oriented data storage format\\n    JDBC: Database connector\\n\\n\\n'"
++     },
++     "metadata": {},
++     "execution_count": 4
++    }
++   ],
++   "source": [
++    "\"\"\"\n",
++    "Spark has 6 core data sources for which out of the box reading capability is provided:\n",
++    "\n",
++    "    CSV: Comma seperated values\n",
++    "    JSON: JavaScipt Object Notation\n",
++    "    Parquet: An open source column oriented data storage format\n",
++    "    Plane/text file\n",
++    "    ORC: An open source column oriented data storage format\n",
++    "    JDBC: Database connector\n",
++    "\n",
++    "\n",
++    "\"\"\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "datapath = '/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# csv"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_csv = spark.read.csv(datapath+'bike-data/'+'201508_station_data.csv').sample(fraction=0.1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "Row(_c0='21', _c1='Franklin at Maple', _c2='37.481758', _c3='-122.226904', _c4='15', _c5='Redwood City', _c6='8/12/2013')"
++     },
++     "metadata": {},
++     "execution_count": 12
++    }
++   ],
++   "source": [
++    "df_csv.first()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# csv doesnt take first row as header "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- _c0: string (nullable = true)\n |-- _c1: string (nullable = true)\n |-- _c2: string (nullable = true)\n |-- _c3: string (nullable = true)\n |-- _c4: string (nullable = true)\n |-- _c5: string (nullable = true)\n |-- _c6: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df_csv.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# reading parquet "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_parquet = spark.read.parquet(datapath+'binary-classification/').sample(fraction=0.1)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- label: integer (nullable = true)\n |-- features: vector (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df_parquet.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# reading text file "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 33,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df = spark.read.text( datapath+ '/sample_movielens_ratings.txt').selectExpr(\"split(value,'::') as rows\" )"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "Row(rows=['0', '2', '3', '1424380312'])"
++     },
++     "metadata": {},
++     "execution_count": 34
++    }
++   ],
++   "source": [
++    "df.first()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 35,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# other non core format and load "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    " df = spark.read.format('csv').option('header',True).option('delimiter',',').load(datapath+'bike-data/'+'201508_station_data.csv').sample(fraction=0.1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- Station id: string (nullable = true)\n |-- name: string (nullable = true)\n |-- lat: string (nullable = true)\n |-- long: string (nullable = true)\n |-- dockcount: string (nullable = true)\n |-- landmark: string (nullable = true)\n |-- installation: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# we can read json and add custom schema too"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "1"
++     },
++     "metadata": {},
++     "execution_count": 11
++    }
++   ],
++   "source": [
++    "df.rdd.getNumPartitions()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/07_dataframe_03.ipynb b/spark_notes/07_dataframe_03.ipynb
+new file mode 100644
+index 0000000..2f1390b
+--- /dev/null
++++ b/spark_notes/07_dataframe_03.ipynb
+@@ -0,0 +1,380 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599717179713",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 43,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.functions import col, when,spark_partition_id,count\n",
++    "from pyspark.sql.types import FloatType"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('dataframe').config('spark.sql.sources.bucketing.enabled',True).getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# action such as \n",
++    "# Take\n",
++    "# Collect \n",
++    "# Show"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "datapath = '/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "data = spark.read.parquet(datapath +'clustering/part-r-00000-8891f92d-5542-4aec-a830-0d4ff6f5f871.gz.parquet' )"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(features=DenseVector([3.0, 10.1, 3.0]))]"
++     },
++     "metadata": {},
++     "execution_count": 7
++    }
++   ],
++   "source": [
++    "data.take(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- features: vector (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "data.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "' \\ncollect action takes the output of tranformation \\n'"
++     },
++     "metadata": {},
++     "execution_count": 9
++    }
++   ],
++   "source": [
++    "\"\"\" \n",
++    "collect action takes the output of tranformation \n",
++    "\"\"\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(features=DenseVector([3.0, 10.1, 3.0]))]"
++     },
++     "metadata": {},
++     "execution_count": 12
++    }
++   ],
++   "source": [
++    "data.limit(2).collect()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# same does the show\n",
++    "\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df = spark.read.option('header',True).csv(datapath +'retail-data/all/online-retail-dataset.csv' ).sample(fraction=0.1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- InvoiceNo: string (nullable = true)\n |-- StockCode: string (nullable = true)\n |-- Description: string (nullable = true)\n |-- Quantity: string (nullable = true)\n |-- InvoiceDate: string (nullable = true)\n |-- UnitPrice: string (nullable = true)\n |-- CustomerID: string (nullable = true)\n |-- Country: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 18,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# columns, rows and adding and renaming columns"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(Description='RED COAT RACK PARIS FASHION')]"
++     },
++     "metadata": {},
++     "execution_count": 21
++    }
++   ],
++   "source": [
++    "df.select(col('Description')).take(1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(InvoiceNo='536368', StockCode='22913', Description='RED COAT RACK PARIS FASHION', Quantity='3', InvoiceDate='12/1/2010 8:34', UnitPrice='4.95', CustomerID='13047', Country='United Kingdom', red_coat=True),\n Row(InvoiceNo='536373', StockCode='20679', Description='EDWARDIAN PARASOL RED', Quantity='6', InvoiceDate='12/1/2010 9:02', UnitPrice='4.95', CustomerID='17850', Country='United Kingdom', red_coat=False),\n Row(InvoiceNo='536373', StockCode='37370', Description='RETRO COFFEE MUGS ASSORTED', Quantity='6', InvoiceDate='12/1/2010 9:02', UnitPrice='1.06', CustomerID='17850', Country='United Kingdom', red_coat=False)]"
++     },
++     "metadata": {},
++     "execution_count": 23
++    }
++   ],
++   "source": [
++    "df.withColumn('red_coat', when(col('Description') == 'RED COAT RACK PARIS FASHION',True).otherwise(False)).take(3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Transformation"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "'\\n\\n    Selecting and filtering\\n    Casting into datatypes\\n    Repartitioning and Coalescing\\n    Aggregation\\n\\n\\n'"
++     },
++     "metadata": {},
++     "execution_count": 25
++    }
++   ],
++   "source": [
++    "\"\"\"\n",
++    "\n",
++    "    Selecting and filtering\n",
++    "    Casting into datatypes\n",
++    "    Repartitioning and Coalescing\n",
++    "    Aggregation\n",
++    "\n",
++    "\n",
++    "\"\"\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 33,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(InvoiceNo='536368', Quantity='3')]"
++     },
++     "metadata": {},
++     "execution_count": 33
++    }
++   ],
++   "source": [
++    "df.select('InvoiceNo','Quantity').take(1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(InvoiceNo='536368', Quantity=3.0)]"
++     },
++     "metadata": {},
++     "execution_count": 36
++    }
++   ],
++   "source": [
++    "df.select('InvoiceNo',col('Quantity').cast(FloatType())).take(1)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 37,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[InvoiceNo: string, StockCode: string, Description: string, Quantity: string, InvoiceDate: string, UnitPrice: string, CustomerID: string, Country: string]"
++     },
++     "metadata": {},
++     "execution_count": 37
++    }
++   ],
++   "source": [
++    "df.select('*').limit(3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 38,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_repartition = df.repartition(col('Quantity'))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 40,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------+---+\n|Quantity|pid|\n+--------+---+\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n|      -4|  0|\n+--------+---+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df_repartition.select('Quantity',spark_partition_id().alias(\"pid\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 41,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# group by"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 44,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Row(CustomerID=None, count(InvoiceNo)=13738),\n Row(CustomerID='12347', count(InvoiceNo)=24),\n Row(CustomerID='12348', count(InvoiceNo)=4),\n Row(CustomerID='12349', count(InvoiceNo)=10),\n Row(CustomerID='12350', count(InvoiceNo)=1)]"
++     },
++     "metadata": {},
++     "execution_count": 44
++    }
++   ],
++   "source": [
++    "df.groupBy('CustomerID').agg(count('InvoiceNo')).sort('CustomerID').take(5)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/spark_notes/07_datawriter.ipynb b/spark_notes/07_datawriter.ipynb
+new file mode 100644
+index 0000000..dc95a8d
+--- /dev/null
++++ b/spark_notes/07_datawriter.ipynb
+@@ -0,0 +1,275 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599708081314",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 34,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('datawriter').config('spark.sql.sources.bucketing.enabled',True).getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "datapath = '/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_csv = spark.read.csv(datapath+'bike-data/'+'201508_station_data.csv').sample(fraction=0.1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_csv.write.mode('Overwrite').csv('/tmp/df_csv')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 8,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# parquet \n",
++    "\n",
++    "df_csv.write.mode('Overwrite').parquet('/tmp/df_csv')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# reading data and saving as json \n",
++    "df_csv.write.mode('Overwrite').json('/tmp/df_csv')\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# How to write a data source to 1 single file or n separate  files"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Coalescing :- This Operation merges all the partition specified number of partition \n",
++    "# Repartion :- This Operation partitions the data into blocks "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_csv.coalesce(1).write.mode('Overwrite').csv('/tmp/coalesce_example')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df_csv.repartition(2).write.mode('Overwrite').csv('/tmp/coalesce_example')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# How to partition data"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- _c0: string (nullable = true)\n |-- _c1: string (nullable = true)\n |-- _c2: string (nullable = true)\n |-- _c3: string (nullable = true)\n |-- _c4: string (nullable = true)\n |-- _c5: string (nullable = true)\n |-- _c6: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df_csv.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df= spark.read.option('header',True).csv(datapath+'bike-data/'+'201508_station_data.csv').sample(fraction=0.1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- Station id: string (nullable = true)\n |-- name: string (nullable = true)\n |-- lat: string (nullable = true)\n |-- long: string (nullable = true)\n |-- dockcount: string (nullable = true)\n |-- landmark: string (nullable = true)\n |-- installation: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 26,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "6"
++     },
++     "metadata": {},
++     "execution_count": 26
++    }
++   ],
++   "source": [
++    "df.select('name').distinct().count()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 20,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df.write.partitionBy('name').csv('/tmp/name_df')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "read_from_partitioned = spark.read.option('header', True).csv('/tmp/name_df/')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- 30: string (nullable = true)\n |-- 37.390277: string (nullable = true)\n |-- -122.066553: string (nullable = true)\n |-- 15: string (nullable = true)\n |-- Mountain View: string (nullable = true)\n |-- 8/16/2013: string (nullable = true)\n |-- name: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "read_from_partitioned.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# bucking # hash function is been used here"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 41,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "#df.write.format('parquet').bucketBy(2, 'name').saveAsTable('bucketedFiles')"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "\"\"\"\n",
++    "\n",
++    "\n",
++    "Options in write mode : function : Supported format\n",
++    "\n",
++    "    Header: Takes boolean value to indicate if header to be included while writing or not : CSV\n",
++    "    sep: Input a characeter to be used as seperator :CSV\n",
++    "    nullValue: Declares what character represents a null value in the file :CSV\n",
++    "    nanValue: Declares what character represents a null value in the file : CSV\n",
++    "    codec : Declares what compression codec Spark should use to read or write the file : CSV, JSON, PARQUET\n",
++    "    timestampFormat : Any string that conforms to Java’s SimpleDataFormat : JSON\n",
++    "    dateFormat : Any string that conforms to Java’s SimpleDataFormat : JSON\n",
++    "\n",
++    "\"\"\""
++   ]
++  }
++ ]
++}
+\ No newline at end of file
+diff --git a/working_with_different_datatypes.ipynb b/working_with_different_datatypes.ipynb
+new file mode 100644
+index 0000000..c211f81
+--- /dev/null
++++ b/working_with_different_datatypes.ipynb
+@@ -0,0 +1,1173 @@
++{
++ "metadata": {
++  "language_info": {
++   "codemirror_mode": {
++    "name": "ipython",
++    "version": 3
++   },
++   "file_extension": ".py",
++   "mimetype": "text/x-python",
++   "name": "python",
++   "nbconvert_exporter": "python",
++   "pygments_lexer": "ipython3",
++   "version": "3.6.9-final"
++  },
++  "orig_nbformat": 2,
++  "kernelspec": {
++   "name": "python_defaultSpec_1599753639819",
++   "display_name": "Python 3.6.9 64-bit ('sparkit': venv)"
++  }
++ },
++ "nbformat": 4,
++ "nbformat_minor": 2,
++ "cells": [
++  {
++   "cell_type": "code",
++   "execution_count": 2,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql import SparkSession\n",
++    "from pyspark.sql.functions import lit,col,instr,expr,pow,round,bround,corr,monotonically_increasing_id,initcap,lower,lpad,rpad,regexp_extract,regexp_replace,translate,locate,current_date,current_timestamp,date_add,date_sub,coalesce\n",
++    "import os"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "spark = SparkSession.builder.appName('df2').getOrCreate()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 4,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "datapath = '/home/amogh/Documents/spark_certification/Spark-The-Definitive-Guide-master/data/'"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 5,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df = spark.read.\\\n",
++    "    option('header',True).\\\n",
++    "        option('inferschema',True).\\\n",
++    "            csv(datapath+'retail-data/by-day/2010-12-01.csv').sample(fraction=0.1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- InvoiceNo: string (nullable = true)\n |-- StockCode: string (nullable = true)\n |-- Description: string (nullable = true)\n |-- Quantity: integer (nullable = true)\n |-- InvoiceDate: timestamp (nullable = true)\n |-- UnitPrice: double (nullable = true)\n |-- CustomerID: double (nullable = true)\n |-- Country: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df.printSchema()\n",
++    "df.createOrReplaceTempView(\"dfTable\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# convert to sparktype"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[5: int, five: string]"
++     },
++     "metadata": {},
++     "execution_count": 9
++    }
++   ],
++   "source": [
++    "df.select(lit(5),lit(\"five\"))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# booleans"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------+---------------------------------+\n|InvoiceNo|Description                      |\n+---------+---------------------------------+\n|536365   |GLASS STAR FROSTED T-LIGHT HOLDER|\n+---------+---------------------------------+\n\n"
++    }
++   ],
++   "source": [
++    "df.where( col(\"InvoiceNo\") == (536365) ).\\\n",
++    "    select(\"InvoiceNo\", \"Description\").show(5,False)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------+---------+--------------+--------+-------------------+---------+----------+--------------+\n|InvoiceNo|StockCode|   Description|Quantity|        InvoiceDate|UnitPrice|CustomerID|       Country|\n+---------+---------+--------------+--------+-------------------+---------+----------+--------------+\n|   536592|      DOT|DOTCOM POSTAGE|       1|2010-12-01 17:06:00|   607.49|      null|United Kingdom|\n+---------+---------+--------------+--------+-------------------+---------+----------+--------------+\n\n"
++    }
++   ],
++   "source": [
++    "pricefilter = col(\"UnitPrice\") > 600\n",
++    "decfilter = instr(col('Description'),\"POSTAGE\") >= 1\n",
++    "\n",
++    "df.where(col('StockCode').isin(\"DOT\") ).where((pricefilter |decfilter  ) ).show(3)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [],
++   "source": [
++    "# we can also use it as boolean column"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------+---------+--------------+--------+-------------------+---------+----------+--------------+-----------+\n|InvoiceNo|StockCode|   Description|Quantity|        InvoiceDate|UnitPrice|CustomerID|       Country|isExpensive|\n+---------+---------+--------------+--------+-------------------+---------+----------+--------------+-----------+\n|   536592|      DOT|DOTCOM POSTAGE|       1|2010-12-01 17:06:00|   607.49|      null|United Kingdom|       true|\n+---------+---------+--------------+--------+-------------------+---------+----------+--------------+-----------+\n\n"
++    }
++   ],
++   "source": [
++    "df.withColumn(\"isExpensive\",(pricefilter |decfilter  ) ).where('isExpensive').show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 27,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------+---------+\n|   Description|UnitPrice|\n+--------------+---------+\n|DOTCOM POSTAGE|   607.49|\n+--------------+---------+\n\n"
++    }
++   ],
++   "source": [
++    "df.withColumn(\"isExpensive\", expr(\"NOT UnitPrice <= 250\"))\\\n",
++    ".where(\"isExpensive\")\\\n",
++    ".select(\"Description\", \"UnitPrice\").show(5)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Numerical column"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "fabricatedQuantity = pow(col(\"Quantity\") * col(\"UnitPrice\"),2) + 5"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 31,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------+------------------+\n|CustomerId|      realQuantity|\n+----------+------------------+\n|   17850.0|            655.25|\n|   13047.0|103.00999999999998|\n|   13047.0|401.00999999999993|\n|   17850.0| 887.0900000000001|\n|   17850.0|            103.01|\n|   17850.0|          418.7156|\n|   17850.0|45.449600000000004|\n|   17850.0|45.449600000000004|\n|   17850.0|163.76000000000005|\n|   17850.0|239.08999999999997|\n|   14688.0|             77.25|\n|   14688.0|            277.25|\n|   14688.0|            385.25|\n|   15311.0|         9560.0625|\n|   15311.0|           13.7025|\n|   16098.0| 397.0399999999999|\n|   16098.0|             446.0|\n|   16029.0| 537939.2335999999|\n|   16029.0|          291605.0|\n|   16250.0|323.62250000000006|\n+----------+------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(expr(\"CustomerId\"),fabricatedQuantity.alias(\"realQuantity\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 32,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# we can use round"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 36,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------+------------+\n|CustomerId|realQuantity|\n+----------+------------+\n|   17850.0|      655.25|\n|   13047.0|      103.01|\n|   13047.0|      401.01|\n|   17850.0|      887.09|\n|   17850.0|      103.01|\n|   17850.0|      418.72|\n|   17850.0|       45.45|\n|   17850.0|       45.45|\n|   17850.0|      163.76|\n|   17850.0|      239.09|\n|   14688.0|       77.25|\n|   14688.0|      277.25|\n|   14688.0|      385.25|\n|   15311.0|     9560.06|\n|   15311.0|        13.7|\n|   16098.0|      397.04|\n|   16098.0|       446.0|\n|   16029.0|   537939.23|\n|   16029.0|    291605.0|\n|   16250.0|      323.62|\n+----------+------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.selectExpr(\"CustomerId\", \"round(power((Quantity * UnitPrice),2.0) + 5,2) as realQuantity\").show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 39,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------------+--------------+\n|round(2.5, 0)|bround(2.5, 0)|\n+-------------+--------------+\n|          3.0|           2.0|\n|          3.0|           2.0|\n+-------------+--------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "# using round \n",
++    "\n",
++    "df.select(round(lit(\"2.5\")), bround(lit(\"2.5\"))).show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 40,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# working with stats"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 41,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "-0.022578777066752327"
++     },
++     "metadata": {},
++     "execution_count": 41
++    }
++   ],
++   "source": [
++    "df.stat.corr(\"Quantity\", \"UnitPrice\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 43,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------------------------+\n|corr(Quantity, UnitPrice)|\n+-------------------------+\n|     -0.02257877706675...|\n+-------------------------+\n\n"
++    }
++   ],
++   "source": [
++    "df.select(corr(\"Quantity\", \"UnitPrice\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 44,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[summary: string, InvoiceNo: string, StockCode: string, Description: string, Quantity: string, UnitPrice: string, CustomerID: string, Country: string]"
++     },
++     "metadata": {},
++     "execution_count": 44
++    }
++   ],
++   "source": [
++    "df.describe()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 47,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[2.51]"
++     },
++     "metadata": {},
++     "execution_count": 47
++    }
++   ],
++   "source": [
++    "# approxquantile\n",
++    "\n",
++    "df.stat.approxQuantile(\"UnitPrice\",[0.5],0)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 48,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+------------------+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+\n|StockCode_Quantity| -7|  1| 10| 12| 16| 18|192|  2| 23| 24| 27|  3| 32| 36|  4| 40|432| 48|  5|  6|  7|  8| 96|\n+------------------+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+\n|             22219|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             72817|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22988|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|\n|             22379|  0|  1|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22585|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|\n|            85114C|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|               DOT|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22314|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|\n|             22905|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22188|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|\n|             82482|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|\n|            84970S|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             21818|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22477|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             21363|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             21288|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22393|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22335|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|\n|             21156|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|\n|             22589|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  0|  1|  0|  0|  0|\n+------------------+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+---+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.stat.crosstab(\"StockCode\", \"Quantity\").show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 49,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------------+--------------------+\n| StockCode_freqItems|  Quantity_freqItems|\n+--------------------+--------------------+\n|[22620, 84029G, 7...|[23, 32, 8, 2, -7...|\n+--------------------+--------------------+\n\n"
++    }
++   ],
++   "source": [
++    "df.stat.freqItems([\"StockCode\", \"Quantity\"]).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 52,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-----------------------------+\n|monotonically_increasing_id()|\n+-----------------------------+\n|                            0|\n|                            1|\n|                            2|\n|                            3|\n|                            4|\n|                            5|\n|                            6|\n|                            7|\n|                            8|\n|                            9|\n|                           10|\n|                           11|\n|                           12|\n|                           13|\n|                           14|\n|                           15|\n|                           16|\n|                           17|\n|                           18|\n|                           19|\n+-----------------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(monotonically_increasing_id()).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 53,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# String functions"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 55,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------------------------------+\n|initcap(Description)             |\n+---------------------------------+\n|Glass Star Frosted T-light Holder|\n|Ivory Knitted Mug Cosy           |\n+---------------------------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(initcap(col(\"Description\"))).show(2,False)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 57,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------------------------------+\n|lower(Description)               |\n+---------------------------------+\n|glass star frosted t-light holder|\n|ivory knitted mug cosy           |\n+---------------------------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(lower(col(\"Description\"))).show(2,False)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 83,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-----------------+\n|lpad(HELLO, 3,  )|\n+-----------------+\n|              HEL|\n|              HEL|\n|              HEL|\n|              HEL|\n+-----------------+\nonly showing top 4 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(lpad(lit(\"HELLO\"),3,\" \")).show(4)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 80,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+------------------+\n|rpad(HELLO, 10, l)|\n+------------------+\n|        HELLOlllll|\n|        HELLOlllll|\n|        HELLOlllll|\n|        HELLOlllll|\n+------------------+\nonly showing top 4 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(rpad(lit(\"HELLO\"),10,\"l\")).show(4)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 3,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Regular expressions"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "regex_string = \"BLACK|WHITE|RED|GREEN|BLUE\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------------+--------------------+\n|         color_clean|         Description|\n+--------------------+--------------------+\n| COLOR METAL LANTERN| WHITE METAL LANTERN|\n|KNITTED UNION FLA...|KNITTED UNION FLA...|\n+--------------------+--------------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(regexp_replace(col(\"Description\"), regex_string, \"COLOR\").alias(\"color_clean\"),\n",
++    "col(\"Description\")).show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- InvoiceNo: string (nullable = true)\n |-- StockCode: string (nullable = true)\n |-- Description: string (nullable = true)\n |-- Quantity: integer (nullable = true)\n |-- InvoiceDate: timestamp (nullable = true)\n |-- UnitPrice: double (nullable = true)\n |-- CustomerID: double (nullable = true)\n |-- Country: string (nullable = true)\n\n"
++    }
++   ],
++   "source": [
++    "df.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------------------------------+--------------------+\n|translate(Description, LEET, 1337)|         Description|\n+----------------------------------+--------------------+\n|               WHI73 M37A1 1AN73RN| WHITE METAL LANTERN|\n|              KNI773D UNION F1A...|KNITTED UNION FLA...|\n|              BA7H BUI1DING B1O...|BATH BUILDING BLO...|\n|              PAP3R CHAIN KI7 5...|PAPER CHAIN KIT 5...|\n|              3DWARDIAN PARASO1...|EDWARDIAN PARASOL...|\n|              WOOD 2 DRAW3R CAB...|WOOD 2 DRAWER CAB...|\n|              R3D WOO11Y HO77I3...|RED WOOLLY HOTTIE...|\n|               WHI73 M37A1 1AN73RN| WHITE METAL LANTERN|\n|              KNI773D UNION F1A...|KNITTED UNION FLA...|\n|              1UNCH BAG R3D R37...|LUNCH BAG RED RET...|\n|              1UNCH BOX WI7H CU...|LUNCH BOX WITH CU...|\n|              PACK OF 72 R37ROS...|PACK OF 72 RETROS...|\n|               GIR1Y PINK 7OO1 S37| GIRLY PINK TOOL SET|\n|              JUMBO SHOPP3R VIN...|JUMBO SHOPPER VIN...|\n|              WHI73 SPO7 R3D C3...|WHITE SPOT RED CE...|\n|              C13AR DRAW3R KNOB...|CLEAR DRAWER KNOB...|\n|              Y311OW BR3AKFAS7 ...|YELLOW BREAKFAST ...|\n|              73A 7IM3 D3S 73A ...|TEA TIME DES TEA ...|\n|              VIN7AG3 SNAK3S & ...|VINTAGE SNAKES & ...|\n|              3 7I3R CAK3 7IN G...|3 TIER CAKE TIN G...|\n+----------------------------------+--------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(translate(col(\"Description\"),'LEET','1337'),col(\"Description\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# regex extract"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 26,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "extract_str = \"(BLACK|WHITE|RED|GREEN|BLUE)\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 27,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-----------+--------------------+\n|color_clean|         Description|\n+-----------+--------------------+\n|      WHITE| WHITE METAL LANTERN|\n|           |KNITTED UNION FLA...|\n+-----------+--------------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(\n",
++    "regexp_extract(col(\"Description\"), extract_str, 1).alias(\"color_clean\"),\n",
++    "col(\"Description\")).show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 28,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# we may want to check if value exists"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "containes_white = instr(col('Description'),'WHITE') >= 1"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "df.withColumn()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 30,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------------------------------+\n|Description                       |\n+----------------------------------+\n|WHITE METAL LANTERN               |\n|WOOD 2 DRAWER CABINET WHITE FINISH|\n|RED WOOLLY HOTTIE WHITE HEART.    |\n+----------------------------------+\nonly showing top 3 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.withColumn(\"hasSimpleColor\", containes_white)\\\n",
++    ".where(\"hasSimpleColor\")\\\n",
++    ".select(\"Description\").show(3, False)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 37,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "simple_colors = [\"black\", \"white\", \"red\", \"green\", \"blue\"]"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 47,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "['black', 'white', 'red', 'green', 'blue']"
++     },
++     "metadata": {},
++     "execution_count": 47
++    }
++   ],
++   "source": [
++    "[c for c in simple_colors]"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 51,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "def color_locator(column, color_string):\n",
++    "    return locate(color_string.upper(), column)\\\n",
++    "    .cast(\"boolean\")\\\n",
++    "    .alias(\"is_\" + color_string)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 58,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------------------------------+\n|Description                       |\n+----------------------------------+\n|WHITE METAL LANTERN               |\n|EDWARDIAN PARASOL RED             |\n|WOOD 2 DRAWER CABINET WHITE FINISH|\n+----------------------------------+\nonly showing top 3 rows\n\n"
++    }
++   ],
++   "source": [
++    "selectedColumns = [color_locator(column = df.Description,color_string = c) for c in simple_colors ]\n",
++    "selectedColumns.append(expr(\"*\"))\n",
++    "df.select(*selectedColumns).where(expr(\"is_white OR is_red\"))\\\n",
++    ".select(\"Description\").show(3, False)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 57,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "[Column<b'CAST(locate(BLACK, Description, 1) AS BOOLEAN) AS `is_black`'>,\n Column<b'CAST(locate(WHITE, Description, 1) AS BOOLEAN) AS `is_white`'>,\n Column<b'CAST(locate(RED, Description, 1) AS BOOLEAN) AS `is_red`'>,\n Column<b'CAST(locate(GREEN, Description, 1) AS BOOLEAN) AS `is_green`'>,\n Column<b'CAST(locate(BLUE, Description, 1) AS BOOLEAN) AS `is_blue`'>,\n Column<b'unresolvedstar()'>]"
++     },
++     "metadata": {},
++     "execution_count": 57
++    }
++   ],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 66,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# UDFs \n",
++    "\n",
++    "def power1(number): \n",
++    "    Double = number * number \n",
++    "\n",
++    "    return Double\n",
++    "\n",
++    "def power3(double_value):\n",
++    "    return double_value ** 3\n",
++    "    "
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 67,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "8"
++     },
++     "metadata": {},
++     "execution_count": 67
++    }
++   ],
++   "source": [
++    "power3(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 75,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "udf_add = spark.udf.register('app',power1)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 72,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------------+\n|app(Quantity)|\n+-------------+\n|           36|\n|           36|\n|            4|\n|           36|\n|            4|\n|           36|\n|           36|\n|           36|\n|           36|\n|           36|\n|          100|\n|          100|\n|          100|\n|          529|\n|            1|\n|          144|\n|          100|\n|        36864|\n|       186624|\n|            9|\n+-------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(udf_add(\"Quantity\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 59,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Datetime"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 6,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "datedf = spark.range(10).\\\n",
++    "    withColumn('today',current_date())\\\n",
++    "        .withColumn('now',current_timestamp())"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "root\n |-- id: long (nullable = false)\n |-- today: date (nullable = false)\n |-- now: timestamp (nullable = false)\n\n"
++    }
++   ],
++   "source": [
++    "datedf.printSchema()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+------------------+\n|date_sub(today, 5)|\n+------------------+\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n|        2020-09-05|\n+------------------+\n\n"
++    }
++   ],
++   "source": [
++    "datedf.select(date_sub(col('today'),5)).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 11,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql.functions import datediff, months_between, to_date"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 15,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------------------------+\n|datediff(week_ago, today)|\n+-------------------------+\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n|                       -7|\n+-------------------------+\n\n"
++    }
++   ],
++   "source": [
++    "datedf.withColumn('week_ago',date_sub('today',7)).select(datediff(col('week_ago'),col('today'))).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# date format\n",
++    "date_format = \"yyyy-dd-MM\""
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 19,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+----------+----------+\n|      date|     date2|\n+----------+----------+\n|2017-11-12|2017-12-20|\n+----------+----------+\n\n"
++    }
++   ],
++   "source": [
++    "spark.range(1).select(to_date(lit(\"2017-12-11\"),date_format).alias(\"date\"),to_date(lit(\"2017-20-12\"), date_format).alias(\"date2\")).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# Null values"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------------------------------+\n|coalesce(Description, CustomerId)|\n+---------------------------------+\n|             HAND WARMER UNION...|\n|             ASSORTED COLOUR B...|\n|             FELTCRAFT PRINCES...|\n|             ROUND SNACK BOXES...|\n|             HAND WARMER UNION...|\n|             WOOD S/3 CABINET ...|\n|             VICTORIAN SEWING ...|\n|             WOOD 2 DRAWER CAB...|\n|             HOT WATER BOTTLE ...|\n|             AIRLINE LOUNGE,ME...|\n|             CLEAR DRAWER KNOB...|\n|             FELT EGG COSY CHI...|\n|             YOU'RE CONFUSING ...|\n|             YELLOW BREAKFAST ...|\n|             HANGING MEDINA LA...|\n|             ENAMEL FLOWER JUG...|\n|             FAIRY TALE COTTAG...|\n|             ROSE CARAVAN DOOR...|\n|             JAM JAR WITH PINK...|\n|             ROSE COTTAGE KEEP...|\n+---------------------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "df.select(coalesce(col(\"Description\"), col(\"CustomerId\"))).show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[InvoiceNo: string, StockCode: string, Description: string, Quantity: int, InvoiceDate: timestamp, UnitPrice: double, CustomerID: double, Country: string]"
++     },
++     "metadata": {},
++     "execution_count": 22
++    }
++   ],
++   "source": [
++    "df.na.drop()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 23,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[InvoiceNo: string, StockCode: string, Description: string, Quantity: int, InvoiceDate: timestamp, UnitPrice: double, CustomerID: double, Country: string]"
++     },
++     "metadata": {},
++     "execution_count": 23
++    }
++   ],
++   "source": [
++    "fill_cols_vals = {\"StockCode\": 5, \"Description\" : \"No Value\"}\n",
++    "df.na.fill(fill_cols_vals)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 24,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[InvoiceNo: string, StockCode: string, Description: string, Quantity: int, InvoiceDate: timestamp, UnitPrice: double, CustomerID: double, Country: string]"
++     },
++     "metadata": {},
++     "execution_count": 24
++    }
++   ],
++   "source": [
++    "df.na.replace([\"\"],[\"unknown\"],\"Description\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 25,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# working with complext data types"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 26,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "from pyspark.sql.functions import struct\n",
++    "complexDF = df.select(struct(\"Description\", \"InvoiceNo\").alias(\"complex\"))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 29,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------------+\n|         Description|\n+--------------------+\n|HAND WARMER UNION...|\n|ASSORTED COLOUR B...|\n|FELTCRAFT PRINCES...|\n|ROUND SNACK BOXES...|\n|HAND WARMER UNION...|\n|WOOD S/3 CABINET ...|\n|VICTORIAN SEWING ...|\n|WOOD 2 DRAWER CAB...|\n|HOT WATER BOTTLE ...|\n|AIRLINE LOUNGE,ME...|\n|CLEAR DRAWER KNOB...|\n|FELT EGG COSY CHI...|\n|YOU'RE CONFUSING ...|\n|YELLOW BREAKFAST ...|\n|HANGING MEDINA LA...|\n|ENAMEL FLOWER JUG...|\n|FAIRY TALE COTTAG...|\n|ROSE CARAVAN DOOR...|\n|JAM JAR WITH PINK...|\n|ROSE COTTAGE KEEP...|\n+--------------------+\nonly showing top 20 rows\n\n"
++    }
++   ],
++   "source": [
++    "complexDF.select(\"complex.Description\").show()"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 7,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+------------+\n|array_col[0]|\n+------------+\n|        HAND|\n|     POPPY'S|\n+------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "from pyspark.sql.functions import split\n",
++    "df.select(split(col('Description'),\" \").alias('array_col')).selectExpr(\"array_col[0]\").show(2)\n"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 9,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+---------------------------+\n|size(split(Description,  ))|\n+---------------------------+\n|                          5|\n|                          3|\n+---------------------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "from pyspark.sql.functions import size,array_contains\n",
++    "df.select(size(split(col(\"Description\"), \" \"))).show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 10,
++   "metadata": {},
++   "outputs": [
++    {
++     "output_type": "execute_result",
++     "data": {
++      "text/plain": "DataFrame[array_contains(split(Description,  ), WHITE): boolean]"
++     },
++     "metadata": {},
++     "execution_count": 10
++    }
++   ],
++   "source": [
++    "df.select(array_contains(split(col(\"Description\"), \" \"),'WHITE'))"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 12,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------------+---------+--------+\n|         Description|InvoiceNo|exploded|\n+--------------------+---------+--------+\n|HAND WARMER RED P...|   536366|    HAND|\n|HAND WARMER RED P...|   536366|  WARMER|\n+--------------------+---------+--------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "from pyspark.sql.functions import split, explode\n",
++    "df.withColumn(\"splitted\", split(col(\"Description\"), \" \"))\\\n",
++    ".withColumn(\"exploded\", explode(col(\"splitted\")))\\\n",
++    ".select(\"Description\", \"InvoiceNo\", \"exploded\").show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 13,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# map"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 14,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+--------------------+\n|         complex_map|\n+--------------------+\n|[HAND WARMER RED ...|\n|[POPPY'S PLAYHOUS...|\n+--------------------+\nonly showing top 2 rows\n\n"
++    }
++   ],
++   "source": [
++    "from pyspark.sql.functions import create_map\n",
++    "df.select(create_map(col(\"Description\"), col(\"InvoiceNo\")).alias(\"complex_map\"))\\\n",
++    ".show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 16,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# json"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 17,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "jsonDF = spark.range(1).selectExpr(\"\"\"'{\"myJSONKey\" : {\"myJSONValue\" : [1, 2, 3]}}' as jsonString\"\"\")"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 21,
++   "metadata": {
++    "tags": []
++   },
++   "outputs": [
++    {
++     "output_type": "stream",
++     "name": "stdout",
++     "text": "+-------------------------------------------------------+--------------------+\n|get_json_object(jsonString, $.myJSONKey.myJSONValue[1])|                  c0|\n+-------------------------------------------------------+--------------------+\n|                                                      2|{\"myJSONValue\":[1...|\n+-------------------------------------------------------+--------------------+\n\n"
++    }
++   ],
++   "source": [
++    "from pyspark.sql.functions import get_json_object, json_tuple\n",
++    "\n",
++    "jsonDF.select(\n",
++    "get_json_object(col(\"jsonString\"), \"$.myJSONKey.myJSONValue[1]\") ,\n",
++    "json_tuple(col(\"jsonString\"), \"myJSONKey\")).show(2)"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": 22,
++   "metadata": {},
++   "outputs": [],
++   "source": [
++    "# to_json and from_json"
++   ]
++  },
++  {
++   "cell_type": "code",
++   "execution_count": null,
++   "metadata": {},
++   "outputs": [],
++   "source": []
++  }
++ ]
++}
+\ No newline at end of file
